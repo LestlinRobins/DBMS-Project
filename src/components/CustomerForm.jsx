@@ -1,8 +1,31 @@
-import React, { useState } from "react";
-import { CheckCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  Paper,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Alert,
+} from "@mui/material";
+import { Plus, Search } from "lucide-react";
 
 const CustomerForm = () => {
   const [customers, setCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -10,8 +33,42 @@ const CustomerForm = () => {
     address: "",
     id_proof: "",
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  useEffect(() => {
+    filterCustomers();
+  }, [searchQuery, customers]);
+
+  const fetchCustomers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/customers");
+      const data = await response.json();
+      setCustomers(data);
+    } catch (err) {
+      console.error("Error fetching customers:", err);
+    }
+    setLoading(false);
+  };
+
+  const filterCustomers = () => {
+    if (!searchQuery.trim()) {
+      setFilteredCustomers(customers);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = customers.filter(
+      (customer) =>
+        customer.Name.toLowerCase().includes(query) ||
+        customer.Phone.includes(query) ||
+        (customer.Email && customer.Email.toLowerCase().includes(query))
+    );
+    setFilteredCustomers(filtered);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -21,8 +78,23 @@ const CustomerForm = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleOpenDialog = () => {
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setFormData({
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      id_proof: "",
+    });
+    setSubmitted(false);
+  };
+
+  const handleSubmit = async () => {
     try {
       const response = await fetch("http://localhost:5000/customers", {
         method: "POST",
@@ -33,211 +105,331 @@ const CustomerForm = () => {
       });
       if (response.ok) {
         setSubmitted(true);
-        setFormData({
-          name: "",
-          phone: "",
-          email: "",
-          address: "",
-          id_proof: "",
-        });
-        setTimeout(() => setSubmitted(false), 3000);
-        fetchCustomers();
+        setTimeout(() => {
+          handleCloseDialog();
+          fetchCustomers();
+        }, 2000);
       }
     } catch (err) {
       console.error("Error adding customer:", err);
     }
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
-      setCustomers([]);
-      return;
-    }
-    try {
-      const response = await fetch(
-        `http://localhost:5000/customers/search/${searchQuery}`
-      );
-      const data = await response.json();
-      setCustomers(data);
-    } catch (err) {
-      console.error("Error searching customers:", err);
-    }
-  };
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await fetch("http://localhost:5000/customers");
-      const data = await response.json();
-      setCustomers(data);
-    } catch (err) {
-      console.error("Error fetching customers:", err);
-    }
-  };
-
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="w-full">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">
+    <div style={{ padding: "32px", width: "100%" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "32px",
+        }}
+      >
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 500 }}>
           Customer Management
-        </h1>
+        </Typography>
+        <Button
+          startIcon={<Plus size={20} />}
+          onClick={handleOpenDialog}
+          variant="outlined"
+          sx={{ textTransform: "none" }}
+        >
+          Add Customer
+        </Button>
+      </div>
 
-        {/* Add Customer Form */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Add New Customer
-          </h2>
-          {submitted && (
-            <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 border border-green-200 flex items-center gap-2">
-              <CheckCircle size={20} />
-              Customer added successfully!
-            </div>
-          )}
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+      {/* Customers Table Paper */}
+      <Paper
+        sx={{
+          p: 3,
+          borderRadius: 2,
+        }}
+      >
+        {/* Search Bar */}
+        <div
+          style={{
+            marginBottom: "24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <Search size={20} style={{ color: "#757575" }} />
+          <TextField
+            placeholder="Search by name, phone, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            variant="outlined"
+            size="small"
+            fullWidth
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 1,
+              },
+            }}
+          />
+        </div>
+
+        {/* Customers Table */}
+        {!loading && customers.length > 0 ? (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow
+                  sx={{
+                    backgroundColor: "background.default",
+                  }}
+                >
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    ID
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Name
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Phone
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Email
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Address
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    ID Proof
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredCustomers.map((customer) => (
+                  <TableRow
+                    key={customer.Customer_ID}
+                    hover
+                    sx={{
+                      "&:last-child td, &:last-child th": { border: 0 },
+                    }}
+                  >
+                    <TableCell
+                      sx={{
+                        fontWeight: "medium",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      {customer.Customer_ID}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontWeight: "medium",
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      {customer.Name}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      <Chip
+                        label={customer.Phone}
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      {customer.Email || (
+                        <Chip label="N/A" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      {customer.Address || (
+                        <Chip label="N/A" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      {customer.ID_Proof ? (
+                        <Chip
+                          label={customer.ID_Proof}
+                          size="small"
+                          color="success"
+                          variant="outlined"
+                        />
+                      ) : (
+                        <Chip label="N/A" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : loading ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center", py: 4 }}
           >
-            <input
-              type="text"
+            Loading customers...
+          </Typography>
+        ) : (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center", py: 4 }}
+          >
+            No customers found. Click "Add Customer" to create one.
+          </Typography>
+        )}
+
+        {/* No Results Message */}
+        {!loading &&
+          customers.length > 0 &&
+          filteredCustomers.length === 0 &&
+          searchQuery && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ textAlign: "center", py: 4 }}
+            >
+              No customers match your search.
+            </Typography>
+          )}
+      </Paper>
+
+      {/* Add Customer Dialog */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
+          Add New Customer
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {submitted && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Customer added successfully!
+            </Alert>
+          )}
+          <div
+            style={{
+              display: "grid",
+              gap: "16px",
+            }}
+          >
+            <TextField
+              fullWidth
+              label="Full Name"
               name="name"
-              placeholder="Full Name"
               value={formData.name}
               onChange={handleInputChange}
               required
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              variant="outlined"
+              size="small"
             />
-            <input
-              type="tel"
+            <TextField
+              fullWidth
+              label="Phone Number"
               name="phone"
-              placeholder="Phone Number"
               value={formData.phone}
               onChange={handleInputChange}
               required
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              variant="outlined"
+              size="small"
+              placeholder="+91 XXXXX XXXXX"
             />
-            <input
-              type="email"
+            <TextField
+              fullWidth
+              label="Email"
               name="email"
-              placeholder="Email"
+              type="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              variant="outlined"
+              size="small"
             />
-            <input
-              type="text"
+            <TextField
+              fullWidth
+              label="Address"
               name="address"
-              placeholder="Address"
               value={formData.address}
               onChange={handleInputChange}
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              variant="outlined"
+              size="small"
+              multiline
+              rows={2}
             />
-            <input
-              type="text"
+            <TextField
+              fullWidth
+              label="ID Proof (Aadhar/PAN)"
               name="id_proof"
-              placeholder="ID Proof (PAN/Aadhar)"
               value={formData.id_proof}
               onChange={handleInputChange}
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent md:col-span-2"
+              variant="outlined"
+              size="small"
+              helperText="Leave empty for foreign customers"
             />
-            <button
-              type="submit"
-              className="bg-green-600 text-white p-3 rounded-lg font-medium hover:bg-green-700 transition-colors md:col-span-2"
-            >
-              Add Customer
-            </button>
-          </form>
-        </div>
-
-        {/* Search Customers */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Search Customers
-          </h2>
-          <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-            <input
-              type="text"
-              placeholder="Search by name or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              className="bg-green-600 text-white px-6 rounded-lg font-medium hover:bg-green-700 transition-colors"
-            >
-              Search
-            </button>
-            <button
-              type="button"
-              onClick={fetchCustomers}
-              className="bg-gray-100 text-gray-700 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors border border-gray-300"
-            >
-              Show All
-            </button>
-          </form>
-
-          {/* Customers Table */}
-          {customers.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Phone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Address
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      ID Proof
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {customers.map((customer) => (
-                    <tr
-                      key={customer.Customer_ID}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {customer.Customer_ID}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {customer.Name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {customer.Phone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {customer.Email || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
-                        {customer.Address || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {customer.ID_Proof || "N/A"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 py-8">
-              No customers found. Use search or show all to view customers.
-            </p>
-          )}
-        </div>
-      </div>
+          </div>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseDialog} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={!formData.name || !formData.phone || submitted}
+          >
+            Add Customer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
