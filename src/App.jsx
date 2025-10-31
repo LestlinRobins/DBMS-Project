@@ -1,5 +1,7 @@
 import { useState } from "react";
 import "./App.css";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import {
   LayoutDashboard,
   Users,
@@ -8,14 +10,17 @@ import {
   CreditCard,
   Building2,
 } from "lucide-react";
+import { CustomThemeProvider, useThemeMode } from "./theme/ThemeContext";
 import Dashboard from "./components/Dashboard";
 import CustomerForm from "./components/CustomerForm";
 import RoomManagement from "./components/RoomManagement";
 import BookingManagement from "./components/BookingManagement";
 import PaymentPage from "./components/PaymentPage";
 
-function App() {
+// Separate component that uses the theme
+const AppContent = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const { theme } = useThemeMode();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -63,33 +68,46 @@ function App() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <Building2 size={32} className="text-green-600" />
-            <span>Hotel Booking</span>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <div className="flex h-screen bg-gray-50">
+        {/* Sidebar */}
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <Building2 size={32} className="text-green-600" />
+              <span>Hotel Booking</span>
+            </div>
           </div>
-        </div>
 
-        <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentPage(item.id)}
-              className={`nav-item ${currentPage === item.id ? "active" : ""}`}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
+          <nav className="sidebar-nav">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className={`nav-item ${
+                  currentPage === item.id ? "active" : ""
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-      {/* Main Content */}
-      <main className="main-content">{renderPage()}</main>
-    </div>
+        {/* Main Content */}
+        <main className="main-content">{renderPage()}</main>
+      </div>
+    </ThemeProvider>
+  );
+};
+
+function App() {
+  return (
+    <CustomThemeProvider>
+      <AppContent />
+    </CustomThemeProvider>
   );
 }
 

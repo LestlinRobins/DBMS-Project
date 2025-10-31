@@ -136,181 +136,208 @@ const BookingManagement = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">
-        Booking Management
-      </h1>
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="w-full">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">
+          Booking Management
+        </h1>
 
-      {/* Create Booking Form */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold">Create New Booking</h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700"
-          >
-            {showForm ? "Hide" : "Show"} Form
-          </button>
+        {/* Create Booking Form */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Create New Booking
+            </h2>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-green-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
+            >
+              {showForm ? "Hide" : "Show"} Form
+            </button>
+          </div>
+
+          {showForm && (
+            <>
+              {submitted && (
+                <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 border border-green-200 flex items-center gap-2">
+                  <CheckCircle size={20} />
+                  Booking created successfully!
+                </div>
+              )}
+              <form
+                onSubmit={handleSubmit}
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              >
+                <select
+                  name="customer_id"
+                  value={formData.customer_id}
+                  onChange={handleInputChange}
+                  required
+                  className="border p-2 rounded"
+                >
+                  <option value="">Select Customer</option>
+                  {customers.map((customer) => (
+                    <option
+                      key={customer.Customer_ID}
+                      value={customer.Customer_ID}
+                    >
+                      {customer.Name} ({customer.Phone})
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="date"
+                  name="check_in_date"
+                  value={formData.check_in_date}
+                  onChange={handleInputChange}
+                  required
+                  className="border p-2 rounded"
+                />
+
+                <input
+                  type="date"
+                  name="check_out_date"
+                  value={formData.check_out_date}
+                  onChange={handleInputChange}
+                  required
+                  className="border p-2 rounded"
+                />
+
+                <select
+                  name="room_id"
+                  value={formData.room_id}
+                  onChange={handleInputChange}
+                  required
+                  className="border p-2 rounded"
+                >
+                  <option value="">Select Room</option>
+                  {availableRooms.map((room) => (
+                    <option key={room.Room_ID} value={room.Room_ID}>
+                      Room {room.Room_Number} ({room.Room_Type}) - ₹
+                      {room.Price_Per_Night}/night
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="submit"
+                  className="bg-green-600 text-white p-2 rounded font-semibold hover:bg-green-700 md:col-span-2"
+                >
+                  Create Booking
+                </button>
+              </form>
+            </>
+          )}
         </div>
 
-        {showForm && (
-          <>
-            {submitted && (
-              <div className="bg-green-100 text-green-700 p-4 rounded mb-4 flex items-center gap-2">
-                <CheckCircle size={20} />
-                Booking created successfully!
-              </div>
-            )}
-            <form
-              onSubmit={handleSubmit}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
-              <select
-                name="customer_id"
-                value={formData.customer_id}
-                onChange={handleInputChange}
-                required
-                className="border p-2 rounded"
-              >
-                <option value="">Select Customer</option>
-                {customers.map((customer) => (
-                  <option
-                    key={customer.Customer_ID}
-                    value={customer.Customer_ID}
-                  >
-                    {customer.Name} ({customer.Phone})
-                  </option>
-                ))}
-              </select>
+        {/* Bookings List */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">
+            All Bookings
+          </h2>
 
-              <input
-                type="date"
-                name="check_in_date"
-                value={formData.check_in_date}
-                onChange={handleInputChange}
-                required
-                className="border p-2 rounded"
-              />
-
-              <input
-                type="date"
-                name="check_out_date"
-                value={formData.check_out_date}
-                onChange={handleInputChange}
-                required
-                className="border p-2 rounded"
-              />
-
-              <select
-                name="room_id"
-                value={formData.room_id}
-                onChange={handleInputChange}
-                required
-                className="border p-2 rounded"
-              >
-                <option value="">Select Room</option>
-                {availableRooms.map((room) => (
-                  <option key={room.Room_ID} value={room.Room_ID}>
-                    Room {room.Room_Number} ({room.Room_Type}) - ₹
-                    {room.Price_Per_Night}/night
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="submit"
-                className="bg-green-600 text-white p-2 rounded font-semibold hover:bg-green-700 md:col-span-2"
-              >
-                Create Booking
-              </button>
-            </form>
-          </>
-        )}
-      </div>
-
-      {/* Bookings List */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-2xl font-semibold mb-4">All Bookings</h2>
-
-        {bookings.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-300">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border px-4 py-2">Booking ID</th>
-                  <th className="border px-4 py-2">Customer</th>
-                  <th className="border px-4 py-2">Room</th>
-                  <th className="border px-4 py-2">Check-in</th>
-                  <th className="border px-4 py-2">Check-out</th>
-                  <th className="border px-4 py-2">Amount</th>
-                  <th className="border px-4 py-2">Status</th>
-                  <th className="border px-4 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bookings.map((booking) => (
-                  <tr key={booking.Booking_ID}>
-                    <td className="border px-4 py-2 font-semibold">
-                      {booking.Booking_ID}
-                    </td>
-                    <td className="border px-4 py-2">{booking.CustomerName}</td>
-                    <td className="border px-4 py-2">
-                      {booking.Room_Number} ({booking.Room_Type})
-                    </td>
-                    <td className="border px-4 py-2">
-                      {booking.Check_In_Date}
-                    </td>
-                    <td className="border px-4 py-2">
-                      {booking.Check_Out_Date}
-                    </td>
-                    <td className="border px-4 py-2 font-semibold">
-                      ₹{booking.Total_Amount?.toFixed(2)}
-                    </td>
-                    <td className="border px-4 py-2">
-                      <span
-                        className={`px-3 py-1 rounded font-semibold ${getStatusColor(
-                          booking.Booking_Status
-                        )}`}
-                      >
-                        {booking.Booking_Status}
-                      </span>
-                    </td>
-                    <td className="border px-4 py-2 text-sm">
-                      {booking.Booking_Status === "Active" && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleUpdateStatus(
-                                booking.Booking_ID,
-                                "Completed"
-                              )
-                            }
-                            className="bg-green-500 text-white px-2 py-1 rounded mr-2 hover:bg-green-600"
-                          >
-                            Complete
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleUpdateStatus(
-                                booking.Booking_ID,
-                                "Cancelled"
-                              )
-                            }
-                            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      )}
-                    </td>
+          {bookings.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Booking ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Room
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Check-in
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Check-out
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-gray-500">No bookings found.</p>
-        )}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {bookings.map((booking) => (
+                    <tr
+                      key={booking.Booking_ID}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        {booking.Booking_ID}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {booking.CustomerName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {booking.Room_Number} ({booking.Room_Type})
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {booking.Check_In_Date}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {booking.Check_Out_Date}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        ₹{booking.Total_Amount?.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${getStatusColor(
+                            booking.Booking_Status
+                          )}`}
+                        >
+                          {booking.Booking_Status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {booking.Booking_Status === "Active" && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() =>
+                                handleUpdateStatus(
+                                  booking.Booking_ID,
+                                  "Completed"
+                                )
+                              }
+                              className="bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                            >
+                              Complete
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleUpdateStatus(
+                                  booking.Booking_ID,
+                                  "Cancelled"
+                                )
+                              }
+                              className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-8">No bookings found.</p>
+          )}
+        </div>
       </div>
     </div>
   );
