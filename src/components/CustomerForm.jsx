@@ -163,10 +163,12 @@ const CustomerForm = () => {
             variant="outlined"
             size="small"
             fullWidth
+            fontSize="0.7rem"
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 1,
               },
+              fontSize: "0.7rem",
             }}
           />
         </div>
@@ -176,11 +178,7 @@ const CustomerForm = () => {
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow
-                  sx={{
-                    backgroundColor: "background.default",
-                  }}
-                >
+                <TableRow>
                   <TableCell
                     sx={{
                       fontWeight: "bold",

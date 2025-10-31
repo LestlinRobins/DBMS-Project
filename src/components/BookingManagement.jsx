@@ -1,25 +1,66 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle } from "lucide-react";
+import {
+  Paper,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Alert,
+  IconButton,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([]);
+  const [filteredBookings, setFilteredBookings] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [availableRooms, setAvailableRooms] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({
     customer_id: "",
     room_id: "",
     check_in_date: "",
     check_out_date: "",
   });
-  const [submitted, setSubmitted] = useState(false);
-  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     fetchBookings();
     fetchCustomers();
   }, []);
 
+  useEffect(() => {
+    filterBookings();
+  }, [searchQuery, bookings, statusFilter]);
+
   const fetchBookings = async () => {
+    setLoading(true);
     try {
       const response = await fetch("http://localhost:5000/api/bookings");
       const data = await response.json();
@@ -27,6 +68,7 @@ const BookingManagement = () => {
     } catch (err) {
       console.error("Error fetching bookings:", err);
     }
+    setLoading(false);
   };
 
   const fetchCustomers = async () => {
@@ -39,6 +81,30 @@ const BookingManagement = () => {
     }
   };
 
+  const filterBookings = () => {
+    let filtered = bookings;
+
+    // Apply status filter
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(
+        (booking) => booking.Booking_Status === statusFilter
+      );
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (booking) =>
+          booking.Booking_ID.toString().includes(query) ||
+          booking.CustomerName.toLowerCase().includes(query) ||
+          booking.Room_Number.toString().includes(query)
+      );
+    }
+
+    setFilteredBookings(filtered);
+  };
+
   const handleInputChange = async (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -48,11 +114,11 @@ const BookingManagement = () => {
 
     // Fetch available rooms when dates change
     if (name === "check_in_date" || name === "check_out_date") {
-      if (formData.check_in_date && formData.check_out_date) {
-        const checkIn =
-          name === "check_in_date" ? value : formData.check_in_date;
-        const checkOut =
-          name === "check_out_date" ? value : formData.check_out_date;
+      const checkIn = name === "check_in_date" ? value : formData.check_in_date;
+      const checkOut =
+        name === "check_out_date" ? value : formData.check_out_date;
+
+      if (checkIn && checkOut) {
         fetchAvailableRooms(checkIn, checkOut);
       }
     }
@@ -70,8 +136,46 @@ const BookingManagement = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleOpenDialog = () => {
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setFormData({
+      customer_id: "",
+      room_id: "",
+      check_in_date: "",
+      check_out_date: "",
+    });
+    setAvailableRooms([]);
+    setSubmitted(false);
+  };
+
+  const handleOpenEditDialog = (booking) => {
+    setEditId(booking.Booking_ID);
+    setFormData({
+      customer_id: booking.Customer_ID,
+      room_id: booking.Room_ID,
+      check_in_date: booking.Check_In_Date,
+      check_out_date: booking.Check_Out_Date,
+    });
+    setOpenEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setOpenEditDialog(false);
+    setEditId(null);
+    setFormData({
+      customer_id: "",
+      room_id: "",
+      check_in_date: "",
+      check_out_date: "",
+    });
+    setAvailableRooms([]);
+  };
+
+  const handleSubmit = async () => {
     try {
       const response = await fetch("http://localhost:5000/api/bookings", {
         method: "POST",
@@ -81,22 +185,53 @@ const BookingManagement = () => {
         body: JSON.stringify(formData),
       });
       if (response.ok) {
-        const result = await response.json();
         setSubmitted(true);
-        setFormData({
-          customer_id: "",
-          room_id: "",
-          check_in_date: "",
-          check_out_date: "",
-        });
         setTimeout(() => {
-          setSubmitted(false);
-          setShowForm(false);
-        }, 3000);
-        fetchBookings();
+          handleCloseDialog();
+          fetchBookings();
+        }, 2000);
       }
     } catch (err) {
       console.error("Error creating booking:", err);
+    }
+  };
+
+  const handleUpdate = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/bookings/${editId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+      if (response.ok) {
+        handleCloseEditDialog();
+        fetchBookings();
+      }
+    } catch (err) {
+      console.error("Error updating booking:", err);
+    }
+  };
+
+  const handleDelete = async (bookingId) => {
+    if (window.confirm("Are you sure you want to delete this booking?")) {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/bookings/${bookingId}`,
+          {
+            method: "DELETE",
+          }
+        );
+        if (response.ok) {
+          fetchBookings();
+        }
+      } catch (err) {
+        console.error("Error deleting booking:", err);
+      }
     }
   };
 
@@ -125,220 +260,528 @@ const BookingManagement = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case "Active":
-        return "bg-blue-100 text-blue-800";
+        return "info";
       case "Completed":
-        return "bg-green-100 text-green-800";
+        return "success";
       case "Cancelled":
-        return "bg-red-100 text-red-800";
+        return "error";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "default";
     }
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="w-full">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">
+    <div style={{ padding: "32px", width: "100%" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "32px",
+        }}
+      >
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 500 }}>
           Booking Management
-        </h1>
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<Plus size={20} />}
+          onClick={handleOpenDialog}
+          sx={{
+            textTransform: "none",
+          }}
+        >
+          Add Booking
+        </Button>
+      </div>
 
-        {/* Create Booking Form */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Create New Booking
-            </h2>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-green-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
-            >
-              {showForm ? "Hide" : "Show"} Form
-            </button>
+      {/* Bookings Table Paper */}
+      <Paper
+        sx={{
+          p: 3,
+          borderRadius: 2,
+        }}
+      >
+        {/* Search and Filter Bar */}
+        <div
+          style={{
+            marginBottom: "24px",
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "16px",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <Search size={20} style={{ color: "#757575" }} />
+            <TextField
+              placeholder="Search by booking ID, customer name, or room number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              variant="outlined"
+              size="small"
+              fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 1,
+                },
+              }}
+            />
           </div>
 
-          {showForm && (
-            <>
-              {submitted && (
-                <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-4 border border-green-200 flex items-center gap-2">
-                  <CheckCircle size={20} />
-                  Booking created successfully!
-                </div>
-              )}
-              <form
-                onSubmit={handleSubmit}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                <select
-                  name="customer_id"
-                  value={formData.customer_id}
-                  onChange={handleInputChange}
-                  required
-                  className="border p-2 rounded"
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer) => (
-                    <option
-                      key={customer.Customer_ID}
-                      value={customer.Customer_ID}
-                    >
-                      {customer.Name} ({customer.Phone})
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  type="date"
-                  name="check_in_date"
-                  value={formData.check_in_date}
-                  onChange={handleInputChange}
-                  required
-                  className="border p-2 rounded"
-                />
-
-                <input
-                  type="date"
-                  name="check_out_date"
-                  value={formData.check_out_date}
-                  onChange={handleInputChange}
-                  required
-                  className="border p-2 rounded"
-                />
-
-                <select
-                  name="room_id"
-                  value={formData.room_id}
-                  onChange={handleInputChange}
-                  required
-                  className="border p-2 rounded"
-                >
-                  <option value="">Select Room</option>
-                  {availableRooms.map((room) => (
-                    <option key={room.Room_ID} value={room.Room_ID}>
-                      Room {room.Room_Number} ({room.Room_Type}) - ₹
-                      {room.Price_Per_Night}/night
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  type="submit"
-                  className="bg-green-600 text-white p-2 rounded font-semibold hover:bg-green-700 md:col-span-2"
-                >
-                  Create Booking
-                </button>
-              </form>
-            </>
-          )}
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Status"
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <MenuItem value="All">All Status</MenuItem>
+              <MenuItem value="Active">Active</MenuItem>
+              <MenuItem value="Completed">Completed</MenuItem>
+              <MenuItem value="Cancelled">Cancelled</MenuItem>
+            </Select>
+          </FormControl>
         </div>
 
-        {/* Bookings List */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">
-            All Bookings
-          </h2>
-
-          {bookings.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Booking ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Room
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Check-in
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Check-out
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {bookings.map((booking) => (
-                    <tr
-                      key={booking.Booking_ID}
-                      className="hover:bg-gray-50 transition-colors"
+        {/* Bookings Table */}
+        {!loading && bookings.length > 0 ? (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow
+                  sx={{
+                    backgroundColor: "background.default",
+                  }}
+                >
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Booking ID
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Customer
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Room
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Check-In
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Check-Out
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Amount
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Status
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Actions
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredBookings.map((booking) => (
+                  <TableRow
+                    key={booking.Booking_ID}
+                    hover
+                    sx={{
+                      "&:last-child td, &:last-child th": { border: 0 },
+                    }}
+                  >
+                    <TableCell
+                      sx={{
+                        fontWeight: "bold",
+                        fontSize: "0.9rem",
+                      }}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {booking.Booking_ID}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {booking.CustomerName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {booking.Room_Number} ({booking.Room_Type})
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {booking.Check_In_Date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {booking.Check_Out_Date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        ₹{booking.Total_Amount?.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${getStatusColor(
-                            booking.Booking_Status
-                          )}`}
-                        >
-                          {booking.Booking_Status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      #{booking.Booking_ID}
+                    </TableCell>
+                    <TableCell
+                      sx={{ fontSize: "0.9rem", fontWeight: "medium" }}
+                    >
+                      {booking.CustomerName}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      <Chip
+                        label={`${booking.Room_Number} (${booking.Room_Type})`}
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      {booking.Check_In_Date}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      {booking.Check_Out_Date}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>
+                      ₹{booking.Total_Amount?.toFixed(2)}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      <Chip
+                        label={booking.Booking_Status}
+                        size="small"
+                        color={getStatusColor(booking.Booking_Status)}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      <div style={{ display: "flex", gap: "8px" }}>
                         {booking.Booking_Status === "Active" && (
-                          <div className="flex gap-2">
-                            <button
+                          <>
+                            <IconButton
+                              size="small"
+                              color="success"
                               onClick={() =>
                                 handleUpdateStatus(
                                   booking.Booking_ID,
                                   "Completed"
                                 )
                               }
-                              className="bg-green-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                              title="Mark as Completed"
                             >
-                              Complete
-                            </button>
-                            <button
+                              <CheckCircle2 size={18} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
                               onClick={() =>
                                 handleUpdateStatus(
                                   booking.Booking_ID,
                                   "Cancelled"
                                 )
                               }
-                              className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                              title="Cancel Booking"
                             >
-                              Cancel
-                            </button>
-                          </div>
+                              <XCircle size={18} />
+                            </IconButton>
+                          </>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-center text-gray-500 py-8">No bookings found.</p>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleOpenEditDialog(booking)}
+                          disabled={booking.Booking_Status !== "Active"}
+                        >
+                          <Edit2 size={18} />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(booking.Booking_ID)}
+                        >
+                          <Trash2 size={18} />
+                        </IconButton>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : loading ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center", py: 4 }}
+          >
+            Loading bookings...
+          </Typography>
+        ) : (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ textAlign: "center", py: 4 }}
+          >
+            No bookings found. Click "Add Booking" to create one.
+          </Typography>
+        )}
+
+        {/* No Results Message */}
+        {!loading &&
+          bookings.length > 0 &&
+          filteredBookings.length === 0 &&
+          (searchQuery || statusFilter !== "All") && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ textAlign: "center", py: 4 }}
+            >
+              No bookings match your filters.
+            </Typography>
           )}
-        </div>
-      </div>
+      </Paper>
+
+      {/* Add Booking Dialog */}
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
+          Add New Booking
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {submitted && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Booking created successfully!
+            </Alert>
+          )}
+          <div
+            style={{
+              display: "grid",
+              gap: "16px",
+            }}
+          >
+            <FormControl fullWidth size="small">
+              <InputLabel>Customer</InputLabel>
+              <Select
+                name="customer_id"
+                value={formData.customer_id}
+                label="Customer"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="">Select Customer</MenuItem>
+                {customers.map((customer) => (
+                  <MenuItem
+                    key={customer.Customer_ID}
+                    value={customer.Customer_ID}
+                  >
+                    {customer.Name} ({customer.Phone})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Check-In Date"
+              name="check_in_date"
+              type="date"
+              value={formData.check_in_date}
+              onChange={handleInputChange}
+              required
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Check-Out Date"
+              name="check_out_date"
+              type="date"
+              value={formData.check_out_date}
+              onChange={handleInputChange}
+              required
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Room</InputLabel>
+              <Select
+                name="room_id"
+                value={formData.room_id}
+                label="Room"
+                onChange={handleInputChange}
+                disabled={availableRooms.length === 0}
+              >
+                <MenuItem value="">Select Room</MenuItem>
+                {availableRooms.map((room) => (
+                  <MenuItem key={room.Room_ID} value={room.Room_ID}>
+                    Room {room.Room_Number} ({room.Room_Type}) - ₹
+                    {room.Price_Per_Night}/night
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {availableRooms.length === 0 &&
+              formData.check_in_date &&
+              formData.check_out_date && (
+                <Alert severity="info">
+                  No rooms available for the selected dates.
+                </Alert>
+              )}
+          </div>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseDialog} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={
+              !formData.customer_id ||
+              !formData.room_id ||
+              !formData.check_in_date ||
+              !formData.check_out_date ||
+              submitted
+            }
+          >
+            Add Booking
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Booking Dialog */}
+      <Dialog
+        open={openEditDialog}
+        onClose={handleCloseEditDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
+          Edit Booking
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <div
+            style={{
+              display: "grid",
+              gap: "16px",
+            }}
+          >
+            <FormControl fullWidth size="small" disabled>
+              <InputLabel>Customer</InputLabel>
+              <Select
+                name="customer_id"
+                value={formData.customer_id}
+                label="Customer"
+              >
+                <MenuItem value="">Select Customer</MenuItem>
+                {customers.map((customer) => (
+                  <MenuItem
+                    key={customer.Customer_ID}
+                    value={customer.Customer_ID}
+                  >
+                    {customer.Name} ({customer.Phone})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Check-In Date"
+              name="check_in_date"
+              type="date"
+              value={formData.check_in_date}
+              onChange={handleInputChange}
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Check-Out Date"
+              name="check_out_date"
+              type="date"
+              value={formData.check_out_date}
+              onChange={handleInputChange}
+              variant="outlined"
+              size="small"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+
+            <Alert severity="info">
+              Note: Editing dates may require checking room availability.
+            </Alert>
+          </div>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseEditDialog} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUpdate}
+            variant="contained"
+            disabled={!formData.check_in_date || !formData.check_out_date}
+          >
+            Update Booking
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

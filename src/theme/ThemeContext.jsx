@@ -16,9 +16,9 @@ const createAppTheme = (mode) =>
     palette: {
       mode,
       primary: {
-        main: "#1976d2", // Material Blue
-        light: "#42a5f5",
-        dark: "#1565c0",
+        main: "#4caf50", // Material Blue
+        light: "#4caf50",
+        dark: "rgba(56, 142, 60, 0.8)",
         contrastText: "#ffffff",
         smallText: mode === "dark" ? "#b3b3b3" : "#757575", // Lighter text for small text
       },
