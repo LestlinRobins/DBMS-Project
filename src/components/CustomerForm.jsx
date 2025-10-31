@@ -18,17 +18,22 @@ import {
   Alert,
   CircularProgress,
   Backdrop,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Edit2, Trash2 } from "lucide-react";
 
 const CustomerForm = () => {
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [deletingCustomer, setDeletingCustomer] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -119,13 +124,41 @@ const CustomerForm = () => {
       id_proof: "",
     });
     setSubmitted(false);
+    setEditingCustomer(null);
+  };
+
+  const handleEditClick = (customer) => {
+    setEditingCustomer(customer);
+    setFormData({
+      name: customer.Name,
+      phone: customer.Phone,
+      email: customer.Email || "",
+      address: customer.Address || "",
+      id_proof: customer.ID_Proof || "",
+    });
+    setOpenDialog(true);
+  };
+
+  const handleDeleteClick = (customer) => {
+    setDeletingCustomer(customer);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+    setDeletingCustomer(null);
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const response = await fetch("http://localhost:5000/customers", {
-        method: "POST",
+      const url = editingCustomer
+        ? `http://localhost:5000/customers/${editingCustomer.Customer_ID}`
+        : "http://localhost:5000/customers";
+      const method = editingCustomer ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -140,9 +173,30 @@ const CustomerForm = () => {
         }, 1500);
       }
     } catch (err) {
-      console.error("Error adding customer:", err);
+      console.error("Error saving customer:", err);
       setSubmitting(false);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingCustomer) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(
+        `http://localhost:5000/customers/${deletingCustomer.Customer_ID}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (response.ok) {
+        await fetchCustomers();
+        handleCloseDeleteDialog();
+      }
+    } catch (err) {
+      console.error("Error deleting customer:", err);
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -269,6 +323,16 @@ const CustomerForm = () => {
                   >
                     ID Proof
                   </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Actions
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -325,6 +389,40 @@ const CustomerForm = () => {
                       ) : (
                         <Chip label="N/A" size="small" variant="outlined" />
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <Tooltip title="Edit Customer">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditClick(customer)}
+                            sx={{
+                              color: "primary.main",
+                              "&:hover": {
+                                backgroundColor: "primary.light",
+                                opacity: 0.1,
+                              },
+                            }}
+                          >
+                            <Edit2 size={18} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Customer">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteClick(customer)}
+                            sx={{
+                              color: "error.main",
+                              "&:hover": {
+                                backgroundColor: "error.light",
+                                opacity: 0.1,
+                              },
+                            }}
+                          >
+                            <Trash2 size={18} />
+                          </IconButton>
+                        </Tooltip>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -392,18 +490,18 @@ const CustomerForm = () => {
           >
             <CircularProgress size={60} sx={{ color: "#fff" }} />
             <Typography variant="h6" sx={{ color: "#fff", fontWeight: 500 }}>
-              Adding Customer...
+              {editingCustomer ? "Updating Customer..." : "Adding Customer..."}
             </Typography>
           </Backdrop>
         )}
 
         <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
-          Add New Customer
+          {editingCustomer ? "Edit Customer" : "Add New Customer"}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           {submitted && (
             <Alert severity="success" sx={{ mb: 2 }}>
-              Customer added successfully!
+              Customer {editingCustomer ? "updated" : "added"} successfully!
             </Alert>
           )}
           <div
@@ -479,7 +577,47 @@ const CustomerForm = () => {
             variant="contained"
             disabled={!formData.name || !formData.phone}
           >
-            Add Customer
+            {editingCustomer ? "Update Customer" : "Add Customer"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
+          Delete Customer
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete customer{" "}
+            <strong>{deletingCustomer?.Name}</strong>? This action cannot be
+            undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseDeleteDialog} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            variant="contained"
+            color="error"
+            disabled={submitting}
+            startIcon={
+              submitting ? <CircularProgress size={16} color="inherit" /> : null
+            }
+          >
+            {submitting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
