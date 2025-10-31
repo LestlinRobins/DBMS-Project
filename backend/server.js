@@ -32,7 +32,7 @@ db.connect((err) => {
   }
 });
 
-// API route
+// API routes
 app.get("/customers", (req, res) => {
   db.query("SELECT * FROM Customer", (err, results) => {
     if (err) {
@@ -40,6 +40,37 @@ app.get("/customers", (req, res) => {
       return res.status(500).json({ error: "Database query failed" });
     }
     res.json(results);
+  });
+});
+
+// Add customer endpoint
+app.post("/customers", (req, res) => {
+  const { name, phone, email, address, id_proof } = req.body;
+
+  // Validate required fields
+  if (!name || !phone) {
+    return res.status(400).json({ error: "Name and phone are required" });
+  }
+
+  const query =
+    "INSERT INTO Customer (Name, Phone, Email, Address, ID_Proof) VALUES (?, ?, ?, ?, ?)";
+  const values = [
+    name,
+    phone,
+    email || null,
+    address || null,
+    id_proof || null,
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error("❌ Error adding customer:", err);
+      return res.status(500).json({ error: "Failed to add customer" });
+    }
+    res.status(201).json({
+      message: "Customer added successfully",
+      customerId: result.insertId,
+    });
   });
 });
 

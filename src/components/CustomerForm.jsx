@@ -16,6 +16,8 @@ import {
   TableRow,
   Chip,
   Alert,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 import { Plus, Search } from "lucide-react";
 
@@ -26,6 +28,7 @@ const CustomerForm = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -72,10 +75,34 @@ const CustomerForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    // Auto-format Aadhar number with hyphens after every 4 digits
+    if (name === "id_proof") {
+      // Remove all non-digit characters
+      const digitsOnly = value.replace(/\D/g, "");
+
+      // Limit to 12 digits (Aadhar number length)
+      const limitedDigits = digitsOnly.slice(0, 12);
+
+      // Add hyphens after every 4 digits
+      let formattedValue = "";
+      for (let i = 0; i < limitedDigits.length; i++) {
+        if (i > 0 && i % 4 === 0) {
+          formattedValue += "-";
+        }
+        formattedValue += limitedDigits[i];
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formattedValue,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleOpenDialog = () => {
@@ -95,6 +122,7 @@ const CustomerForm = () => {
   };
 
   const handleSubmit = async () => {
+    setSubmitting(true);
     try {
       const response = await fetch("http://localhost:5000/customers", {
         method: "POST",
@@ -105,13 +133,15 @@ const CustomerForm = () => {
       });
       if (response.ok) {
         setSubmitted(true);
+        await fetchCustomers();
         setTimeout(() => {
           handleCloseDialog();
-          fetchCustomers();
-        }, 2000);
+          setSubmitting(false);
+        }, 1500);
       }
     } catch (err) {
       console.error("Error adding customer:", err);
+      setSubmitting(false);
     }
   };
 
@@ -343,9 +373,30 @@ const CustomerForm = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
+            position: "relative",
           },
         }}
       >
+        {/* Loading Overlay */}
+        {submitting && (
+          <Backdrop
+            open={submitting}
+            sx={{
+              position: "absolute",
+              zIndex: (theme) => theme.zIndex.drawer + 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              borderRadius: 2,
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <CircularProgress size={60} sx={{ color: "#fff" }} />
+            <Typography variant="h6" sx={{ color: "#fff", fontWeight: 500 }}>
+              Adding Customer...
+            </Typography>
+          </Backdrop>
+        )}
+
         <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
           Add New Customer
         </DialogTitle>
@@ -405,13 +456,17 @@ const CustomerForm = () => {
             />
             <TextField
               fullWidth
-              label="ID Proof (Aadhar/PAN)"
+              label="ID Proof (Aadhar Number)"
               name="id_proof"
               value={formData.id_proof}
               onChange={handleInputChange}
               variant="outlined"
               size="small"
-              helperText="Leave empty for foreign customers"
+              placeholder="XXXX-XXXX-XXXX"
+              helperText="Leave empty for foreign customers. Auto-formats as you type."
+              inputProps={{
+                maxLength: 14, // 12 digits + 2 hyphens
+              }}
             />
           </div>
         </DialogContent>
@@ -422,7 +477,7 @@ const CustomerForm = () => {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={!formData.name || !formData.phone || submitted}
+            disabled={!formData.name || !formData.phone}
           >
             Add Customer
           </Button>
