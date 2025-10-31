@@ -21,6 +21,8 @@ import {
   Select,
   FormControl,
   InputLabel,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 import { Plus, Search, Edit2, Trash2, Filter } from "lucide-react";
 
@@ -32,9 +34,11 @@ const RoomManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("none");
   const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({
     room_number: "",
@@ -51,10 +55,18 @@ const RoomManagement = () => {
     filterRooms();
   }, [searchQuery, rooms, statusFilter, typeFilter]);
 
+  useEffect(() => {
+    fetchRooms();
+  }, [sortBy]);
+
   const fetchRooms = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/rooms");
+      const url =
+        sortBy !== "none"
+          ? `http://localhost:5000/rooms?sortBy=${sortBy}`
+          : "http://localhost:5000/rooms";
+      const response = await fetch(url);
       const data = await response.json();
       setRooms(data);
     } catch (err) {
@@ -137,6 +149,7 @@ const RoomManagement = () => {
   };
 
   const handleSubmit = async () => {
+    setSubmitting(true);
     try {
       const response = await fetch("http://localhost:5000/rooms", {
         method: "POST",
@@ -147,13 +160,15 @@ const RoomManagement = () => {
       });
       if (response.ok) {
         setSubmitted(true);
+        await fetchRooms();
         setTimeout(() => {
           handleCloseDialog();
-          fetchRooms();
-        }, 2000);
+          setSubmitting(false);
+        }, 1500);
       }
     } catch (err) {
       console.error("Error adding room:", err);
+      setSubmitting(false);
     }
   };
 
@@ -275,7 +290,7 @@ const RoomManagement = () => {
           style={{
             marginBottom: "24px",
             display: "grid",
-            gridTemplateColumns: "1fr auto auto",
+            gridTemplateColumns: "1fr auto auto auto",
             gap: "16px",
             alignItems: "center",
           }}
@@ -296,6 +311,20 @@ const RoomManagement = () => {
               }}
             />
           </div>
+
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Sort By</InputLabel>
+            <Select
+              value={sortBy}
+              label="Sort By"
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <MenuItem value="none">Default</MenuItem>
+              <MenuItem value="room_number">Room Number</MenuItem>
+              <MenuItem value="price">Price</MenuItem>
+              <MenuItem value="floor">Floor</MenuItem>
+            </Select>
+          </FormControl>
 
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Status</InputLabel>
@@ -512,9 +541,30 @@ const RoomManagement = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
+            position: "relative",
           },
         }}
       >
+        {/* Loading Overlay */}
+        {submitting && (
+          <Backdrop
+            open={submitting}
+            sx={{
+              position: "absolute",
+              zIndex: (theme) => theme.zIndex.drawer + 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              borderRadius: 2,
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <CircularProgress size={60} sx={{ color: "#fff" }} />
+            <Typography variant="h6" sx={{ color: "#fff", fontWeight: 500 }}>
+              Adding Room...
+            </Typography>
+          </Backdrop>
+        )}
+
         <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
           Add New Room
         </DialogTitle>
@@ -585,9 +635,7 @@ const RoomManagement = () => {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={
-              !formData.room_number || !formData.price_per_night || submitted
-            }
+            disabled={!formData.room_number || !formData.price_per_night}
           >
             Add Room
           </Button>

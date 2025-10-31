@@ -20,8 +20,12 @@ import {
   Backdrop,
   IconButton,
   Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
-import { Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Filter } from "lucide-react";
 
 const CustomerForm = () => {
   const [customers, setCustomers] = useState([]);
@@ -34,17 +38,23 @@ const CustomerForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [deletingCustomer, setDeletingCustomer] = useState(null);
+  const [sortBy, setSortBy] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
     address: "",
     id_proof: "",
+    joined_on: "",
   });
 
   useEffect(() => {
     fetchCustomers();
   }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [sortBy]);
 
   useEffect(() => {
     filterCustomers();
@@ -53,7 +63,10 @@ const CustomerForm = () => {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/customers");
+      const url = sortBy
+        ? `http://localhost:5000/customers?sortBy=${sortBy}`
+        : "http://localhost:5000/customers";
+      const response = await fetch(url);
       const data = await response.json();
       setCustomers(data);
     } catch (err) {
@@ -122,6 +135,7 @@ const CustomerForm = () => {
       email: "",
       address: "",
       id_proof: "",
+      joined_on: "",
     });
     setSubmitted(false);
     setEditingCustomer(null);
@@ -129,12 +143,16 @@ const CustomerForm = () => {
 
   const handleEditClick = (customer) => {
     setEditingCustomer(customer);
+    const joinedDate = customer.Joined_on
+      ? new Date(customer.Joined_on).toISOString().slice(0, 10)
+      : "";
     setFormData({
       name: customer.Name,
       phone: customer.Phone,
       email: customer.Email || "",
       address: customer.Address || "",
       id_proof: customer.ID_Proof || "",
+      joined_on: joinedDate,
     });
     setOpenDialog(true);
   };
@@ -230,31 +248,61 @@ const CustomerForm = () => {
           borderRadius: 2,
         }}
       >
-        {/* Search Bar */}
+        {/* Search and Sort Bar */}
         <div
           style={{
             marginBottom: "24px",
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "16px",
             alignItems: "center",
-            gap: "12px",
           }}
         >
-          <Search size={20} style={{ color: "#757575" }} />
-          <TextField
-            placeholder="Search by name, phone, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            variant="outlined"
-            size="small"
-            fullWidth
-            fontSize="0.7rem"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 1,
-              },
-              fontSize: "0.7rem",
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
             }}
-          />
+          >
+            <Search size={20} style={{ color: "#757575" }} />
+            <TextField
+              placeholder="Search by name, phone, or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              variant="outlined"
+              size="small"
+              fullWidth
+              fontSize="0.7rem"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 1,
+                },
+                fontSize: "0.7rem",
+              }}
+            />
+          </div>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="sort-by-label">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <Filter size={16} />
+                Sort By
+              </div>
+            </InputLabel>
+            <Select
+              labelId="sort-by-label"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              label="Sort By"
+            >
+              <MenuItem value="">Default</MenuItem>
+              <MenuItem value="customer_id">Customer ID</MenuItem>
+              <MenuItem value="name">Name</MenuItem>
+              <MenuItem value="joined_on">Joined Date (Newest First)</MenuItem>
+            </Select>
+          </FormControl>
         </div>
 
         {/* Customers Table */}
@@ -331,6 +379,16 @@ const CustomerForm = () => {
                       letterSpacing: "0.5px",
                     }}
                   >
+                    Joined On
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
                     Actions
                   </TableCell>
                 </TableRow>
@@ -389,6 +447,18 @@ const CustomerForm = () => {
                       ) : (
                         <Chip label="N/A" size="small" variant="outlined" />
                       )}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                      {customer.Joined_on
+                        ? new Date(customer.Joined_on).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )
+                        : "N/A"}
                     </TableCell>
                     <TableCell>
                       <div style={{ display: "flex", gap: "8px" }}>
@@ -564,6 +634,20 @@ const CustomerForm = () => {
               helperText="Leave empty for foreign customers. Auto-formats as you type."
               inputProps={{
                 maxLength: 14, // 12 digits + 2 hyphens
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Joined On"
+              name="joined_on"
+              type="date"
+              value={formData.joined_on}
+              onChange={handleInputChange}
+              variant="outlined"
+              size="small"
+              helperText="Leave empty to use current date"
+              InputLabelProps={{
+                shrink: true,
               }}
             />
           </div>

@@ -20,28 +20,37 @@ db.connect((err) => {
 
 // Customers Section
 app.get("/customers", (req, res) => {
-  db.query("SELECT * FROM Customer", (err, results) => {
+  const { sortBy } = req.query;
+  let query = "SELECT * FROM Customer";
+
+  if (sortBy === "customer_id") {
+    query += " ORDER BY Customer_ID ASC";
+  } else if (sortBy === "name") {
+    query += " ORDER BY Name ASC";
+  } else if (sortBy === "joined_on") {
+    query += " ORDER BY Joined_on DESC";
+  }
+
+  db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: "Database query failed" });
     res.json(results);
   });
 });
 
 app.post("/customers", (req, res) => {
-  const { name, phone, email, address, id_proof } = req.body;
+  const { name, phone, email, address, id_proof, joined_on } = req.body;
 
   if (!name || !phone) {
     return res.status(400).json({ error: "Name and phone are required" });
   }
 
-  const query =
-    "INSERT INTO Customer (Name, Phone, Email, Address, ID_Proof) VALUES (?, ?, ?, ?, ?)";
-  const values = [
-    name,
-    phone,
-    email || null,
-    address || null,
-    id_proof || null,
-  ];
+  const query = joined_on
+    ? "INSERT INTO Customer (Name, Phone, Email, Address, ID_Proof, Joined_on) VALUES (?, ?, ?, ?, ?, ?)"
+    : "INSERT INTO Customer (Name, Phone, Email, Address, ID_Proof) VALUES (?, ?, ?, ?, ?)";
+
+  const values = joined_on
+    ? [name, phone, email || null, address || null, id_proof || null, joined_on]
+    : [name, phone, email || null, address || null, id_proof || null];
 
   db.query(query, values, (err, result) => {
     if (err) return res.status(500).json({ error: "Failed to add customer" });
@@ -98,7 +107,18 @@ app.delete("/customers/:id", (req, res) => {
 
 // Rooms Section
 app.get("/rooms", (req, res) => {
-  db.query("SELECT * FROM room", (err, results) => {
+  const { sortBy } = req.query;
+  let query = "SELECT * FROM room";
+
+  if (sortBy === "price") {
+    query += " ORDER BY Price_Per_Night ASC";
+  } else if (sortBy === "room_number") {
+    query += " ORDER BY Room_Number ASC";
+  } else if (sortBy === "floor") {
+    query += " ORDER BY Floor_Number ASC";
+  }
+
+  db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: "Database query failed" });
     res.json(results);
   });
