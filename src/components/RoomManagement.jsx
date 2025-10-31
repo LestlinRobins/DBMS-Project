@@ -32,6 +32,7 @@ const RoomManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [editId, setEditId] = useState(null);
@@ -53,7 +54,7 @@ const RoomManagement = () => {
   const fetchRooms = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/rooms");
+      const response = await fetch("http://localhost:5000/rooms");
       const data = await response.json();
       setRooms(data);
     } catch (err) {
@@ -126,6 +127,7 @@ const RoomManagement = () => {
   const handleCloseEditDialog = () => {
     setOpenEditDialog(false);
     setEditId(null);
+    setError("");
     setFormData({
       room_number: "",
       room_type: "Single",
@@ -136,7 +138,7 @@ const RoomManagement = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/rooms", {
+      const response = await fetch("http://localhost:5000/rooms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -156,39 +158,41 @@ const RoomManagement = () => {
   };
 
   const handleUpdate = async () => {
+    setError("");
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/rooms/${editId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            room_type: formData.room_type,
-            price_per_night: formData.price_per_night,
-            floor_number: formData.floor_number,
-          }),
-        }
-      );
+      const response = await fetch(`http://localhost:5000/rooms/${editId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          room_number: formData.room_number,
+          room_type: formData.room_type,
+          price_per_night: formData.price_per_night,
+          floor_number: formData.floor_number,
+        }),
+      });
+
+      const data = await response.json();
+
       if (response.ok) {
         handleCloseEditDialog();
         fetchRooms();
+      } else {
+        setError(data.error || "Failed to update room");
       }
     } catch (err) {
       console.error("Error updating room:", err);
+      setError("Failed to update room. Please try again.");
     }
   };
 
   const handleDelete = async (roomId) => {
     if (window.confirm("Are you sure you want to delete this room?")) {
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/rooms/${roomId}`,
-          {
-            method: "DELETE",
-          }
-        );
+        const response = await fetch(`http://localhost:5000/rooms/${roomId}`, {
+          method: "DELETE",
+        });
         if (response.ok) {
           fetchRooms();
         }
@@ -201,21 +205,19 @@ const RoomManagement = () => {
   const handleUpdateStatus = async (roomId, newStatus) => {
     try {
       const room = rooms.find((r) => r.Room_ID === roomId);
-      const response = await fetch(
-        `http://localhost:5000/api/rooms/${roomId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            room_type: room.Room_Type,
-            price_per_night: room.Price_Per_Night,
-            floor_number: room.Floor_Number,
-            status: newStatus,
-          }),
-        }
-      );
+      const response = await fetch(`http://localhost:5000/rooms/${roomId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          room_number: room.Room_Number,
+          room_type: room.Room_Type,
+          price_per_night: room.Price_Per_Night,
+          floor_number: room.Floor_Number,
+          status: newStatus,
+        }),
+      });
       if (response.ok) {
         fetchRooms();
       }
@@ -608,6 +610,11 @@ const RoomManagement = () => {
           Edit Room
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
           <div
             style={{
               display: "grid",
@@ -620,7 +627,9 @@ const RoomManagement = () => {
               name="room_number"
               type="number"
               value={formData.room_number}
-              disabled
+              onChange={(e) =>
+                setFormData({ ...formData, room_number: e.target.value })
+              }
               variant="outlined"
               size="small"
             />

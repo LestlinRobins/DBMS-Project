@@ -18,6 +18,7 @@ db.connect((err) => {
   else console.log("Connected to MySQL");
 });
 
+// Customers Section
 app.get("/customers", (req, res) => {
   db.query("SELECT * FROM Customer", (err, results) => {
     if (err) return res.status(500).json({ error: "Database query failed" });
@@ -44,12 +45,10 @@ app.post("/customers", (req, res) => {
 
   db.query(query, values, (err, result) => {
     if (err) return res.status(500).json({ error: "Failed to add customer" });
-    res
-      .status(201)
-      .json({
-        message: "Customer added successfully",
-        customerId: result.insertId,
-      });
+    res.status(201).json({
+      message: "Customer added successfully",
+      customerId: result.insertId,
+    });
   });
 });
 
@@ -95,6 +94,88 @@ app.delete("/customers/:id", (req, res) => {
       res.json({ message: "Customer deleted successfully" });
     }
   );
+});
+
+// Rooms Section
+app.get("/rooms", (req, res) => {
+  db.query("SELECT * FROM room", (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
+app.post("/rooms", (req, res) => {
+  const { room_number, room_type, price_per_night, floor_number } = req.body;
+
+  if (!room_number || !price_per_night) {
+    return res
+      .status(400)
+      .json({ error: "Room number and price are required" });
+  }
+
+  const query =
+    "INSERT INTO room (Room_Number, Room_Type, Price_Per_Night, Floor_Number, Status) VALUES (?, ?, ?, ?, 'Available')";
+  const values = [
+    room_number,
+    room_type || "Single",
+    price_per_night,
+    floor_number || null,
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) return res.status(500).json({ error: "Failed to add room" });
+    res
+      .status(201)
+      .json({ message: "Room added successfully", roomId: result.insertId });
+  });
+});
+
+app.put("/rooms/:id", (req, res) => {
+  const { id } = req.params;
+  const { room_number, room_type, price_per_night, floor_number, status } =
+    req.body;
+
+  const query =
+    "UPDATE room SET Room_Number = ?, Room_Type = ?, Price_Per_Night = ?, Floor_Number = ?, Status = ? WHERE Room_ID = ?";
+  const values = [
+    room_number,
+    room_type,
+    price_per_night,
+    floor_number || null,
+    status || "Available",
+    id,
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ error: "Room number already exists" });
+      }
+      return res.status(500).json({ error: "Failed to update room" });
+    }
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: "Room not found" });
+    res.json({ message: "Room updated successfully" });
+  });
+});
+
+app.delete("/rooms/:id", (req, res) => {
+  const { id } = req.params;
+
+  db.query("DELETE FROM room WHERE Room_ID = ?", [id], (err, result) => {
+    if (err) return res.status(500).json({ error: "Failed to delete room" });
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: "Room not found" });
+    res.json({ message: "Room deleted successfully" });
+  });
+});
+
+// Bookings Section
+app.get("/bookings", (req, res) => {
+  db.query("SELECT * FROM Booking", (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
 });
 
 app.listen(5000, () => console.log("Server running on http://localhost:5000"));
