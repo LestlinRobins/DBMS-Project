@@ -33,7 +33,7 @@ db.connect((err) => {
 });
 
 // API route
-app.get("/courses", (req, res) => {
+app.get("/customers", (req, res) => {
   db.query("SELECT * FROM Customer", (err, results) => {
     if (err) {
       console.error("❌ Query error:", err);
