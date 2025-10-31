@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
   Paper,
+  Box,
+  Typography,
   Table,
   TableBody,
   TableCell,
@@ -21,17 +18,17 @@ import {
   Divider,
 } from "@mui/material";
 import {
-  Print as PrintIcon,
-  BarChart as BarChartIcon,
-  Business as BusinessIcon,
-  AttachMoney as MoneyIcon,
-  TrendingUp as TrendingUpIcon,
-  People as PeopleIcon,
-  Event as EventIcon,
-  AccountBalanceWallet as WalletIcon,
-  LightMode as LightModeIcon,
-  DarkMode as DarkModeIcon,
-} from "@mui/icons-material";
+  Printer,
+  BarChart3,
+  Home,
+  DollarSign,
+  TrendingUp,
+  Users,
+  Calendar,
+  Wallet,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { useThemeMode } from "../theme/ThemeContext";
 
 const Dashboard = () => {
@@ -89,21 +86,23 @@ const Dashboard = () => {
 
   if (loading)
     return (
-      <Box sx={{ p: 4, width: "100%" }}>
+      <div style={{ padding: "32px", width: "100%" }}>
         <Paper sx={{ p: 4, textAlign: "center" }}>
           <Typography>Loading dashboard data...</Typography>
           <LinearProgress sx={{ mt: 2 }} />
         </Paper>
-      </Box>
+      </div>
     );
 
   return (
-    <Box sx={{ p: 4, width: "100%" }}>
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={4}
+    <div style={{ padding: "32px", width: "100%" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "32px",
+        }}
       >
         <Typography variant="h4" component="h1" sx={{ fontWeight: 500 }}>
           Dashboard Overview
@@ -117,557 +116,524 @@ const Dashboard = () => {
             borderRadius: 2,
           }}
         >
-          {mode === "light" ? <DarkModeIcon /> : <LightModeIcon />}
+          {mode === "light" ? <Moon size={20} /> : <Sun size={20} />}
         </IconButton>
-      </Box>
+      </div>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "24px",
+          marginBottom: "32px",
+        }}
+      >
         {/* Total Bookings Card */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              height: "100%",
-              "&:hover": { boxShadow: 4 },
-              transition: "box-shadow 0.3s",
+        <Paper
+          sx={{
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "100%",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: "16px",
             }}
           >
-            <CardContent>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                mb={2}
-              >
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    bgcolor: "primary.main",
-                    borderRadius: 2,
-                  }}
-                >
-                  <EventIcon sx={{ color: "white" }} />
-                </Box>
-                <Chip
-                  label="+12%"
-                  color="success"
-                  size="small"
-                  icon={<TrendingUpIcon />}
-                />
-              </Box>
-              <Typography color="text.secondary" variant="body2" gutterBottom>
-                Total Bookings
-              </Typography>
-              <Typography variant="h4" component="div" fontWeight="bold">
-                {stats.totalBookings}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                vs last month
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+            <Calendar size={20} style={{ color: "var(--color-primary)" }} />
+            <Chip
+              label="+12%"
+              color="success"
+              size="small"
+              icon={<TrendingUp size={16} />}
+            />
+          </div>
+          <div>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
+              Total Bookings
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: "bold", my: 1 }}>
+              {stats.totalBookings}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              vs last month
+            </Typography>
+          </div>
+        </Paper>
 
         {/* Active Bookings Card */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              height: "100%",
-              "&:hover": { boxShadow: 4 },
-              transition: "box-shadow 0.3s",
+        <Paper
+          sx={{
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "100%",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: "16px",
             }}
           >
-            <CardContent>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                mb={2}
-              >
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    bgcolor: "success.main",
-                    borderRadius: 2,
-                  }}
-                >
-                  <BarChartIcon sx={{ color: "white" }} />
-                </Box>
-                <Chip label="ACTIVE" color="success" size="small" />
-              </Box>
-              <Typography color="text.secondary" variant="body2" gutterBottom>
-                Active Bookings
-              </Typography>
-              <Typography variant="h4" component="div" fontWeight="bold">
-                {stats.activeBookings}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Currently checked-in
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+            <BarChart3 size={20} style={{ color: "var(--color-success)" }} />
+            <Chip label="ACTIVE" color="success" size="small" />
+          </div>
+          <div>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
+              Active Bookings
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: "bold", my: 1 }}>
+              {stats.activeBookings}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Currently checked-in
+            </Typography>
+          </div>
+        </Paper>
 
         {/* Total Customers Card */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              height: "100%",
-              "&:hover": { boxShadow: 4 },
-              transition: "box-shadow 0.3s",
+        <Paper
+          sx={{
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "100%",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: "16px",
             }}
           >
-            <CardContent>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                mb={2}
-              >
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    bgcolor: "secondary.main",
-                    borderRadius: 2,
-                  }}
-                >
-                  <PeopleIcon sx={{ color: "white" }} />
-                </Box>
-                <Chip
-                  label="+8%"
-                  color="success"
-                  size="small"
-                  icon={<TrendingUpIcon />}
-                />
-              </Box>
-              <Typography color="text.secondary" variant="body2" gutterBottom>
-                Total Customers
-              </Typography>
-              <Typography variant="h4" component="div" fontWeight="bold">
-                {stats.totalCustomers}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Registered users
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+            <Users size={20} style={{ color: "var(--color-secondary)" }} />
+            <Chip
+              label="+8%"
+              color="success"
+              size="small"
+              icon={<TrendingUp size={16} />}
+            />
+          </div>
+          <div>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
+              Total Customers
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: "bold", my: 1 }}>
+              {stats.totalCustomers}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Registered users
+            </Typography>
+          </div>
+        </Paper>
 
         {/* Total Revenue Card */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card
-            sx={{
-              height: "100%",
-              "&:hover": { boxShadow: 4 },
-              transition: "box-shadow 0.3s",
+        <Paper
+          sx={{
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "100%",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              marginBottom: "16px",
             }}
           >
-            <CardContent>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                mb={2}
-              >
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    bgcolor: "warning.main",
-                    borderRadius: 2,
-                  }}
-                >
-                  <WalletIcon sx={{ color: "white" }} />
-                </Box>
-                <Chip
-                  label="+15%"
-                  color="success"
-                  size="small"
-                  icon={<TrendingUpIcon />}
-                />
-              </Box>
-              <Typography color="text.secondary" variant="body2" gutterBottom>
-                Total Revenue
-              </Typography>
-              <Typography variant="h4" component="div" fontWeight="bold">
-                ₹{stats.totalRevenue?.toFixed(2) || "0.00"}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                All time earnings
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            <Wallet size={20} style={{ color: "var(--color-warning)" }} />
+            <Chip
+              label="+15%"
+              color="success"
+              size="small"
+              icon={<TrendingUp size={16} />}
+            />
+          </div>
+          <div>
+            <Typography color="text.secondary" variant="body2" gutterBottom>
+              Total Revenue
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: "bold", my: 1 }}>
+              ₹{stats.totalRevenue?.toFixed(2) || "0.00"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              All time earnings
+            </Typography>
+          </div>
+        </Paper>
+      </div>
 
       {/* Charts Section */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))",
+          gap: "24px",
+          marginBottom: "32px",
+        }}
+      >
         {/* Room Occupancy */}
-        <Grid item xs={12} lg={6}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2} mb={3}>
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "primary.light",
-                    borderRadius: 1,
+        <Paper sx={{ p: 3, height: "100%" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <Home size={20} style={{ color: "var(--color-primary)" }} />
+            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+              Room Status Overview
+            </Typography>
+          </div>
+          <div>
+            {occupancy.map((item, index) => {
+              const colors = ["success", "info", "warning"];
+              const chipColor = colors[index % colors.length];
+              return (
+                <div
+                  key={item.Status}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingTop: "16px",
+                    paddingBottom: "16px",
+                    borderBottom:
+                      index !== occupancy.length - 1
+                        ? "1px solid #e5e7eb"
+                        : "none",
                   }}
                 >
-                  <BusinessIcon color="primary" />
-                </Box>
-                <Typography variant="h6" fontWeight="medium">
-                  Room Status Overview
-                </Typography>
-              </Box>
-              <Box>
-                {occupancy.map((item, index) => {
-                  const colors = ["success", "info", "warning"];
-                  const chipColor = colors[index % colors.length];
-                  return (
-                    <Box
-                      key={item.Status}
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      py={2}
-                      sx={{
-                        "&:not(:last-child)": {
-                          borderBottom: 1,
-                          borderColor: "divider",
-                        },
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "16px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor:
+                          chipColor === "success"
+                            ? "#10b981"
+                            : chipColor === "info"
+                            ? "#3b82f6"
+                            : "#f59e0b",
                       }}
-                    >
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            bgcolor: `${chipColor}.main`,
-                          }}
-                        />
-                        <Typography variant="body2" fontWeight="medium">
-                          {item.Status}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        label={item.Count}
-                        color={chipColor}
-                        size="small"
-                        variant="outlined"
-                      />
-                    </Box>
-                  );
-                })}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+                    />
+                    <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                      {item.Status}
+                    </Typography>
+                  </div>
+                  <Chip
+                    label={item.Count}
+                    color={chipColor}
+                    size="small"
+                    variant="outlined"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Paper>
 
         {/* Room Type Revenue */}
-        <Grid item xs={12} lg={6}>
-          <Card sx={{ height: "100%" }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2} mb={3}>
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "success.light",
-                    borderRadius: 1,
-                  }}
-                >
-                  <MoneyIcon color="success" />
-                </Box>
-                <Typography variant="h6" fontWeight="medium">
-                  Revenue by Room Type
-                </Typography>
-              </Box>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          Type
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          Bookings
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          Revenue
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {roomTypeRevenue.map((item) => (
-                      <TableRow
-                        key={item.Room_Type}
-                        hover
-                        sx={{
-                          "&:last-child td, &:last-child th": { border: 0 },
-                        }}
+        <Paper sx={{ p: 3, height: "100%" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <DollarSign size={20} style={{ color: "var(--color-success)" }} />
+            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+              Revenue by Room Type
+            </Typography>
+          </div>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                      Type
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                      Bookings
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                      Revenue
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {roomTypeRevenue.map((item) => (
+                  <TableRow
+                    key={item.Room_Type}
+                    hover
+                    sx={{
+                      "&:last-child td, &:last-child th": { border: 0 },
+                    }}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                        {item.Room_Type}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        label={item.Bookings}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: "medium", color: "success.main" }}
                       >
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {item.Room_Type}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Chip
-                            label={item.Bookings}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography
-                            variant="body2"
-                            fontWeight="medium"
-                            color="success.main"
-                          >
-                            ₹{item.Revenue?.toFixed(2) || "0.00"}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                        ₹{item.Revenue?.toFixed(2) || "0.00"}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </div>
 
       {/* Reports Section */}
-      <Card sx={{ mt: 4 }}>
-        <CardContent>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            mb={3}
+      <Box
+        sx={{
+          mt: 4,
+          p: 3,
+          borderRadius: 2,
+          border: 1,
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          height: "100%",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <BarChart3 size={20} style={{ color: "var(--color-primary)" }} />
+            <div>
+              <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+                Reports & Analytics
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                View detailed insights and metrics
+              </Typography>
+            </div>
+          </div>
+          <Button
+            variant="outlined"
+            startIcon={<Printer size={20} />}
+            onClick={handlePrint}
+            sx={{ textTransform: "none" }}
           >
-            <Box display="flex" alignItems="center" gap={2}>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                sx={{
-                  width: 48,
-                  height: 48,
-                  bgcolor: "primary.main",
-                  borderRadius: 2,
-                }}
-              >
-                <BarChartIcon sx={{ color: "white" }} />
-              </Box>
-              <Box>
-                <Typography variant="h6" fontWeight="medium">
-                  Reports & Analytics
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  View detailed insights and metrics
-                </Typography>
-              </Box>
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<PrintIcon />}
-              onClick={handlePrint}
-              sx={{ textTransform: "none" }}
-            >
-              Print Report
-            </Button>
-          </Box>
+            Print Report
+          </Button>
+        </div>
 
-          <Divider sx={{ mb: 3 }} />
+        <Divider sx={{ mb: 3 }} />
 
-          {/* Report Type Selection */}
-          <Tabs
-            value={reportType}
-            onChange={(e, newValue) => setReportType(newValue)}
-            sx={{ mb: 3 }}
-          >
-            <Tab
-              value="summary"
-              label="Revenue Summary"
-              icon={<BarChartIcon />}
-              iconPosition="start"
-              sx={{ textTransform: "none", minHeight: 48 }}
-            />
-            <Tab
-              value="occupancy"
-              label="Room Occupancy"
-              icon={<BusinessIcon />}
-              iconPosition="start"
-              sx={{ textTransform: "none", minHeight: 48 }}
-            />
-            <Tab
-              value="revenue"
-              label="Revenue Breakdown"
-              icon={<MoneyIcon />}
-              iconPosition="start"
-              sx={{ textTransform: "none", minHeight: 48 }}
-            />
-          </Tabs>
+        {/* Report Type Selection */}
+        <Tabs
+          value={reportType}
+          onChange={(e, newValue) => setReportType(newValue)}
+          sx={{ mb: 3 }}
+        >
+          <Tab
+            value="summary"
+            label="Revenue Summary"
+            icon={<BarChart3 size={18} />}
+            iconPosition="start"
+            sx={{ textTransform: "none", minHeight: 48 }}
+          />
+          <Tab
+            value="occupancy"
+            label="Room Occupancy"
+            icon={<Home size={18} />}
+            iconPosition="start"
+            sx={{ textTransform: "none", minHeight: 48 }}
+          />
+          <Tab
+            value="revenue"
+            label="Revenue Breakdown"
+            icon={<DollarSign size={18} />}
+            iconPosition="start"
+            sx={{ textTransform: "none", minHeight: 48 }}
+          />
+        </Tabs>
 
-          {/* Report Content */}
-          <Paper
-            elevation={0}
-            sx={{ bgcolor: "grey.50", p: 3, borderRadius: 2 }}
-          >
-            {reportType === "summary" && <RevenueSummaryReport stats={stats} />}
-            {reportType === "occupancy" && <OccupancyReport data={occupancy} />}
-            {reportType === "revenue" && (
-              <RevenueByTypeReport data={roomTypeRevenue} />
-            )}
-          </Paper>
-        </CardContent>
-      </Card>
-    </Box>
+        {/* Report Content */}
+        <Box elevation={0} sx={{ height: "120%" }}>
+          {reportType === "summary" && <RevenueSummaryReport stats={stats} />}
+          {reportType === "occupancy" && <OccupancyReport data={occupancy} />}
+          {reportType === "revenue" && (
+            <RevenueByTypeReport data={roomTypeRevenue} />
+          )}
+        </Box>
+      </Box>
+    </div>
   );
 };
 
 const RevenueSummaryReport = ({ stats }) => (
-  <Grid container spacing={2}>
-    <Grid item xs={6} md={3}>
-      <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
-        <Typography variant="caption" color="text.secondary">
-          Total Bookings
-        </Typography>
-        <Typography variant="h6" fontWeight="bold">
-          {stats.totalBookings}
-        </Typography>
-      </Paper>
-    </Grid>
-    <Grid item xs={6} md={3}>
-      <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
-        <Typography variant="caption" color="text.secondary">
-          Active Bookings
-        </Typography>
-        <Typography variant="h6" fontWeight="bold">
-          {stats.activeBookings}
-        </Typography>
-      </Paper>
-    </Grid>
-    <Grid item xs={6} md={3}>
-      <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
-        <Typography variant="caption" color="text.secondary">
-          Total Customers
-        </Typography>
-        <Typography variant="h6" fontWeight="bold">
-          {stats.totalCustomers}
-        </Typography>
-      </Paper>
-    </Grid>
-    <Grid item xs={6} md={3}>
-      <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
-        <Typography variant="caption" color="text.secondary">
-          Total Revenue
-        </Typography>
-        <Typography variant="h6" fontWeight="bold">
-          ₹{stats.totalRevenue?.toFixed(2) || "0.00"}
-        </Typography>
-      </Paper>
-    </Grid>
-  </Grid>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+      gap: "16px",
+    }}
+  >
+    <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
+      <Typography variant="caption" color="text.secondary">
+        Total Bookings
+      </Typography>
+      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+        {stats.totalBookings}
+      </Typography>
+    </Paper>
+    <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
+      <Typography variant="caption" color="text.secondary">
+        Active Bookings
+      </Typography>
+      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+        {stats.activeBookings}
+      </Typography>
+    </Paper>
+    <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
+      <Typography variant="caption" color="text.secondary">
+        Total Customers
+      </Typography>
+      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+        {stats.totalCustomers}
+      </Typography>
+    </Paper>
+    <Paper elevation={2} sx={{ p: 2, textAlign: "center" }}>
+      <Typography variant="caption" color="text.secondary">
+        Total Revenue
+      </Typography>
+      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+        ₹{stats.totalRevenue?.toFixed(2) || "0.00"}
+      </Typography>
+    </Paper>
+  </div>
 );
 
 const OccupancyReport = ({ data }) => {
   const total = data.reduce((sum, d) => sum + d.Count, 0);
 
   return (
-    <Box>
+    <div>
       {data.map((item, index) => {
         const percentage = ((item.Count / total) * 100).toFixed(1);
         const colors = ["success", "info", "warning"];
         const color = colors[index % colors.length];
 
         return (
-          <Box key={item.Status} sx={{ mb: 2 }}>
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={1}
+          <div key={item.Status} style={{ marginBottom: "16px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "8px",
+              }}
             >
-              <Typography variant="body2" fontWeight="medium">
+              <Typography variant="body2" sx={{ fontWeight: "medium" }}>
                 {item.Status}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {item.Count} ({percentage}%)
               </Typography>
-            </Box>
+            </div>
             <LinearProgress
               variant="determinate"
               value={parseFloat(percentage)}
               color={color}
               sx={{ height: 8, borderRadius: 1 }}
             />
-          </Box>
+          </div>
         );
       })}
-    </Box>
+    </div>
   );
 };
 
 const RevenueByTypeReport = ({ data }) => (
-  <Box>
+  <div>
     {data.map((item, index) => (
-      <Box
+      <div
         key={item.Room_Type}
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        py={2}
-        sx={{
-          "&:not(:last-child)": { borderBottom: 1, borderColor: "divider" },
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingTop: "16px",
+          paddingBottom: "16px",
+          borderBottom:
+            index !== data.length - 1 ? "1px solid #e5e7eb" : "none",
         }}
       >
-        <Box>
-          <Typography variant="body2" fontWeight="medium">
+        <div>
+          <Typography variant="body2" sx={{ fontWeight: "medium" }}>
             {item.Room_Type}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {item.Bookings} bookings
           </Typography>
-        </Box>
-        <Typography variant="body2" fontWeight="medium" color="success.main">
+        </div>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: "medium", color: "success.main" }}
+        >
           ₹{item.Revenue?.toFixed(2) || "0.00"}
         </Typography>
-      </Box>
+      </div>
     ))}
-  </Box>
+  </div>
 );
 
 export default Dashboard;

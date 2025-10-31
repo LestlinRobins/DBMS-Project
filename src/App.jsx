@@ -70,11 +70,33 @@ const AppContent = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="flex h-screen bg-gray-50">
+      <div
+        className="flex h-screen"
+        style={{ backgroundColor: theme.palette.background.default }}
+      >
         {/* Sidebar */}
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <div className="sidebar-logo">
+        <aside
+          className="sidebar"
+          style={{
+            backgroundColor: theme.palette.background.paper,
+            borderRightColor: theme.palette.divider,
+            transition: "background-color 0.3s ease, border-color 0.3s ease",
+          }}
+        >
+          <div
+            className="sidebar-header"
+            style={{
+              borderBottomColor: theme.palette.divider,
+              transition: "border-color 0.3s ease",
+            }}
+          >
+            <div
+              className="sidebar-logo"
+              style={{
+                color: theme.palette.text.primary,
+                transition: "color 0.3s ease",
+              }}
+            >
               <Building2 size={32} className="text-green-600" />
               <span>Hotel Booking</span>
             </div>
@@ -88,6 +110,32 @@ const AppContent = () => {
                 className={`nav-item ${
                   currentPage === item.id ? "active" : ""
                 }`}
+                style={{
+                  color:
+                    currentPage === item.id
+                      ? theme.palette.success.main
+                      : theme.palette.text.secondary,
+                  backgroundColor:
+                    currentPage === item.id
+                      ? theme.palette.mode === "light"
+                        ? "#ecfdf5"
+                        : "rgba(16, 185, 129, 0.1)"
+                      : "transparent",
+                  transition: "background-color 0.2s ease, color 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage !== item.id) {
+                    e.currentTarget.style.backgroundColor =
+                      theme.palette.action.hover;
+                    e.currentTarget.style.color = theme.palette.text.primary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentPage !== item.id) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = theme.palette.text.secondary;
+                  }
+                }}
               >
                 {item.icon}
                 <span>{item.label}</span>
@@ -97,7 +145,12 @@ const AppContent = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="main-content">{renderPage()}</main>
+        <main
+          className="main-content"
+          style={{ backgroundColor: theme.palette.background.default }}
+        >
+          {renderPage()}
+        </main>
       </div>
     </ThemeProvider>
   );

@@ -128,7 +128,7 @@ const createAppTheme = (mode) =>
         styleOverrides: {
           root: {
             borderRadius: 18,
-            backgroundColor: mode === "dark" ? "#1e1e1e" : "#ffffff",
+            backgroundColor: mode === "dark" ? "#141414ff" : "#ffffff",
             boxShadow:
               mode === "dark"
                 ? "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)"
@@ -235,6 +235,48 @@ const createAppTheme = (mode) =>
                 mode === "dark" ? "rgba(2, 119, 189, 0.1)" : "transparent",
               borderColor: mode === "dark" ? "#64b5f6" : "#0277bd",
               color: mode === "dark" ? "#64b5f6" : "#0277bd",
+            },
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            textTransform: "none",
+            fontWeight: 500,
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          },
+          contained: {
+            backgroundColor:
+              mode === "dark" ? "rgba(56, 142, 60, 0.8)" : "#4caf50",
+            color: "#ffffff",
+            boxShadow:
+              mode === "dark"
+                ? "0 4px 6px -1px rgba(0, 0, 0, 0.3)"
+                : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            "&:hover": {
+              backgroundColor:
+                mode === "dark" ? "rgba(56, 142, 60, 1)" : "#45a049",
+              boxShadow:
+                mode === "dark"
+                  ? "0 10px 15px -3px rgba(0, 0, 0, 0.3)"
+                  : "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+            },
+            "&:active": {
+              backgroundColor:
+                mode === "dark" ? "rgba(40, 100, 40, 1)" : "#3d8b40",
+            },
+          },
+          outlined: {
+            borderColor: mode === "dark" ? "#66bb6a" : "#4caf50",
+            color: mode === "dark" ? "#66bb6a" : "#2e7d32",
+            "&:hover": {
+              backgroundColor:
+                mode === "dark"
+                  ? "rgba(56, 142, 60, 0.1)"
+                  : "rgba(76, 175, 80, 0.08)",
+              borderColor: mode === "dark" ? "#81c784" : "#45a049",
             },
           },
         },
