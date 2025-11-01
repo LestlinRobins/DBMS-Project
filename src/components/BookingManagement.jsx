@@ -381,17 +381,43 @@ const BookingManagement = () => {
     fetchBookings();
   };
 
-  const downloadReceipt = () => {
+  const downloadReceipt = async () => {
     if (receiptRef.current) {
-      // In a real app, you'd use html2canvas or similar
-      window.print();
+      try {
+        const html2canvas = (await import("html2canvas")).default;
+        const canvas = await html2canvas(receiptRef.current, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+
+        const link = document.createElement("a");
+        link.download = `booking-receipt-${bookingDetails?.Booking_ID}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      } catch (error) {
+        console.error("Error downloading receipt:", error);
+      }
     }
   };
 
-  const downloadKeycard = () => {
+  const downloadKeycard = async () => {
     if (keycardRef.current) {
-      // In a real app, you'd use html2canvas to generate an image
-      window.print();
+      try {
+        const html2canvas = (await import("html2canvas")).default;
+        const canvas = await html2canvas(keycardRef.current, {
+          scale: 2,
+          backgroundColor: null,
+          logging: false,
+        });
+
+        const link = document.createElement("a");
+        link.download = `keycard-${bookingDetails?.Booking_ID}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      } catch (error) {
+        console.error("Error downloading keycard:", error);
+      }
     }
   };
 
@@ -1760,274 +1786,279 @@ const BookingManagement = () => {
         >
           Booking Confirmed!
         </DialogTitle>
-        <DialogContent ref={receiptRef} sx={{ pt: 3 }}>
-          <Box sx={{ textAlign: "center", mb: 3 }}>
-            <Box
+        <DialogContent sx={{ pt: 3 }}>
+          <Box ref={receiptRef} sx={{ p: 2 }}>
+            <Box sx={{ textAlign: "center", mb: 3 }}>
+              <Box
+                sx={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: "50%",
+                  bgcolor: "success.main",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto",
+                  mb: 2,
+                  mt: 3,
+                  animation: "scaleIn 0.5s ease-out",
+                  "@keyframes scaleIn": {
+                    "0%": { transform: "scale(0)" },
+                    "50%": { transform: "scale(1.1)" },
+                    "100%": { transform: "scale(1)" },
+                  },
+                }}
+              >
+                <CheckCircle2 size={48} color="white" />
+              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                Booking Successful!
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Booking ID: #{bookingDetails?.Booking_ID}
+              </Typography>
+            </Box>
+
+            <Divider sx={{ mb: 2 }} />
+
+            <Paper
               sx={{
-                width: 80,
-                height: 80,
-                borderRadius: "50%",
-                bgcolor: "success.main",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto",
-                mb: 2,
-                mt: 3,
-                animation: "scaleIn 0.5s ease-out",
-                "@keyframes scaleIn": {
-                  "0%": { transform: "scale(0)" },
-                  "50%": { transform: "scale(1.1)" },
-                  "100%": { transform: "scale(1)" },
-                },
+                p: 3,
+                mb: 3,
+                border: "2px dotted",
+                borderColor: "divider",
+                boxShadow: "none",
               }}
             >
-              <CheckCircle2 size={48} color="white" />
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-              Booking Successful!
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Booking ID: #{bookingDetails?.Booking_ID}
-            </Typography>
-          </Box>
-
-          <Divider sx={{ mb: 2 }} />
-
-          <Paper
-            sx={{
-              p: 3,
-              mb: 3,
-              border: "2px dotted",
-              borderColor: "divider",
-              boxShadow: "none",
-            }}
-          >
-            <Grid container spacing={2.5}>
-              <Grid item xs={12}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 0.5,
-                    textTransform: "uppercase",
-                    fontSize: "0.75rem",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Guest Information
-                </Typography>
-                <Typography variant="h6" sx={{ mb: 0.3, fontSize: "1.1rem" }}>
-                  {bookingDetails?.Customer_Name}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ fontSize: "0.875rem" }}
-                >
-                  {bookingDetails?.Customer_Phone}
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Divider sx={{ borderStyle: "dotted", my: 0.5 }} />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 0.5,
-                    textTransform: "uppercase",
-                    fontSize: "0.75rem",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Room
-                </Typography>
-                <Typography variant="h6" sx={{ mb: 0.5, fontSize: "1.1rem" }}>
-                  Room {bookingDetails?.Room_Number}
-                </Typography>
-                <Chip
-                  label={bookingDetails?.Room_Type}
-                  size="small"
-                  color="primary"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 0.5,
-                    textTransform: "uppercase",
-                    fontSize: "0.75rem",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Stay Duration
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ mb: 0.3, fontSize: "0.95rem" }}
-                >
-                  <strong>Check-In:</strong>{" "}
-                  {bookingDetails?.Check_In_Date &&
-                    new Date(bookingDetails.Check_In_Date).toLocaleDateString(
-                      "en-GB",
-                      { day: "2-digit", month: "short", year: "numeric" }
-                    )}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ mb: 0.3, fontSize: "0.95rem" }}
-                >
-                  <strong>Check-Out:</strong>{" "}
-                  {bookingDetails?.Check_Out_Date &&
-                    new Date(bookingDetails.Check_Out_Date).toLocaleDateString(
-                      "en-GB",
-                      { day: "2-digit", month: "short", year: "numeric" }
-                    )}
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Divider sx={{ borderStyle: "dotted", my: 0.5 }} />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Box>
-                  <Box
+              <Grid container spacing={2.5}>
+                <Grid item xs={12}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
                     sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 1.5,
+                      fontWeight: 600,
+                      mb: 0.5,
+                      textTransform: "uppercase",
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.5px",
                     }}
                   >
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 500, fontSize: "0.95rem" }}
-                    >
-                      Room Charges
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{ fontWeight: 600, fontSize: "1rem" }}
-                    >
-                      ₹
-                      {(() => {
-                        const totalAmount = Number(
-                          bookingDetails?.Total_Amount
-                        );
-                        const nights = Math.ceil(
-                          (new Date(bookingDetails?.Check_Out_Date) -
-                            new Date(bookingDetails?.Check_In_Date)) /
-                            (1000 * 60 * 60 * 24)
-                        );
-                        const pricePerNight = totalAmount / nights;
-                        const calc = calculateTotalWithGST(
-                          pricePerNight,
-                          nights
-                        );
-                        return calc.roomTotal.toFixed(2);
-                      })()}
-                    </Typography>
-                  </Box>
-                  <Box
+                    Guest Information
+                  </Typography>
+                  <Typography variant="h6" sx={{ mb: 0.3, fontSize: "1.1rem" }}>
+                    {bookingDetails?.Customer_Name}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: "0.875rem" }}
+                  >
+                    {bookingDetails?.Customer_Phone}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ borderStyle: "dotted", my: 0.5 }} />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
                     sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 2,
+                      fontWeight: 600,
+                      mb: 0.5,
+                      textTransform: "uppercase",
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.5px",
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontSize: "0.875rem" }}
-                    >
-                      GST (
-                      {(() => {
-                        const totalAmount = Number(
-                          bookingDetails?.Total_Amount
-                        );
-                        const nights = Math.ceil(
-                          (new Date(bookingDetails?.Check_Out_Date) -
-                            new Date(bookingDetails?.Check_In_Date)) /
-                            (1000 * 60 * 60 * 24)
-                        );
-                        const pricePerNight = totalAmount / nights;
-                        const calc = calculateTotalWithGST(
-                          pricePerNight,
-                          nights
-                        );
-                        return calc.gstRate;
-                      })()}
-                      %)
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontSize: "0.875rem" }}
-                    >
-                      ₹
-                      {(() => {
-                        const totalAmount = Number(
-                          bookingDetails?.Total_Amount
-                        );
-                        const nights = Math.ceil(
-                          (new Date(bookingDetails?.Check_Out_Date) -
-                            new Date(bookingDetails?.Check_In_Date)) /
-                            (1000 * 60 * 60 * 24)
-                        );
-                        const pricePerNight = totalAmount / nights;
-                        const calc = calculateTotalWithGST(
-                          pricePerNight,
-                          nights
-                        );
-                        return calc.gstAmount.toFixed(2);
-                      })()}
-                    </Typography>
-                  </Box>
-                  <Divider sx={{ borderStyle: "dotted", mb: 2 }} />
-                  <Box
+                    Room
+                  </Typography>
+                  <Typography variant="h6" sx={{ mb: 0.5, fontSize: "1.1rem" }}>
+                    Room {bookingDetails?.Room_Number}
+                  </Typography>
+                  <Chip
+                    label={bookingDetails?.Room_Type}
+                    size="small"
+                    color="primary"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
                     sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      fontWeight: 600,
+                      mb: 0.5,
+                      textTransform: "uppercase",
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.5px",
                     }}
                   >
-                    <Typography
-                      variant="h6"
+                    Stay Duration
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ mb: 0.3, fontSize: "0.95rem" }}
+                  >
+                    <strong>Check-In:</strong>{" "}
+                    {bookingDetails?.Check_In_Date &&
+                      new Date(bookingDetails.Check_In_Date).toLocaleDateString(
+                        "en-GB",
+                        { day: "2-digit", month: "short", year: "numeric" }
+                      )}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{ mb: 0.3, fontSize: "0.95rem" }}
+                  >
+                    <strong>Check-Out:</strong>{" "}
+                    {bookingDetails?.Check_Out_Date &&
+                      new Date(
+                        bookingDetails.Check_Out_Date
+                      ).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                  </Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ borderStyle: "dotted", my: 0.5 }} />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box>
+                    <Box
                       sx={{
-                        fontWeight: 600,
-                        fontSize: "1.1rem",
-                        marginRight: "20px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 1.5,
                       }}
                     >
-                      Total Amount
-                    </Typography>
-                    <Typography
-                      variant="h4"
-                      color="primary"
-                      sx={{ fontWeight: 700, fontSize: "1.75rem" }}
+                      <Typography
+                        variant="body1"
+                        sx={{ fontWeight: 500, fontSize: "0.95rem" }}
+                      >
+                        Room Charges
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        sx={{ fontWeight: 600, fontSize: "1rem" }}
+                      >
+                        ₹
+                        {(() => {
+                          const totalAmount = Number(
+                            bookingDetails?.Total_Amount
+                          );
+                          const nights = Math.ceil(
+                            (new Date(bookingDetails?.Check_Out_Date) -
+                              new Date(bookingDetails?.Check_In_Date)) /
+                              (1000 * 60 * 60 * 24)
+                          );
+                          const pricePerNight = totalAmount / nights;
+                          const calc = calculateTotalWithGST(
+                            pricePerNight,
+                            nights
+                          );
+                          return calc.roomTotal.toFixed(2);
+                        })()}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 2,
+                      }}
                     >
-                      ₹{Number(bookingDetails?.Total_Amount).toFixed(2)}
-                    </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: "0.875rem" }}
+                      >
+                        GST (
+                        {(() => {
+                          const totalAmount = Number(
+                            bookingDetails?.Total_Amount
+                          );
+                          const nights = Math.ceil(
+                            (new Date(bookingDetails?.Check_Out_Date) -
+                              new Date(bookingDetails?.Check_In_Date)) /
+                              (1000 * 60 * 60 * 24)
+                          );
+                          const pricePerNight = totalAmount / nights;
+                          const calc = calculateTotalWithGST(
+                            pricePerNight,
+                            nights
+                          );
+                          return calc.gstRate;
+                        })()}
+                        %)
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: "0.875rem" }}
+                      >
+                        ₹
+                        {(() => {
+                          const totalAmount = Number(
+                            bookingDetails?.Total_Amount
+                          );
+                          const nights = Math.ceil(
+                            (new Date(bookingDetails?.Check_Out_Date) -
+                              new Date(bookingDetails?.Check_In_Date)) /
+                              (1000 * 60 * 60 * 24)
+                          );
+                          const pricePerNight = totalAmount / nights;
+                          const calc = calculateTotalWithGST(
+                            pricePerNight,
+                            nights
+                          );
+                          return calc.gstAmount.toFixed(2);
+                        })()}
+                      </Typography>
+                    </Box>
+                    <Divider sx={{ borderStyle: "dotted", mb: 2 }} />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "1.1rem",
+                          marginRight: "20px",
+                        }}
+                      >
+                        Total Amount
+                      </Typography>
+                      <Typography
+                        variant="h4"
+                        color="primary"
+                        sx={{ fontWeight: 700, fontSize: "1.75rem" }}
+                      >
+                        ₹{Number(bookingDetails?.Total_Amount).toFixed(2)}
+                      </Typography>
+                    </Box>
                   </Box>
-                </Box>
+                </Grid>
               </Grid>
-            </Grid>
-          </Paper>
+            </Paper>
 
-          <Alert severity="success" sx={{ mb: 2 }}>
-            Your booking has been confirmed! A virtual keycard has been
-            generated for you.
-          </Alert>
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Your booking has been confirmed! A virtual keycard has been
+              generated for you.
+            </Alert>
+          </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2, justifyContent: "space-between" }}>
           <Button
@@ -2069,162 +2100,170 @@ const BookingManagement = () => {
         >
           Virtual Keycard
         </DialogTitle>
-        <DialogContent ref={keycardRef} sx={{ pt: 3 }}>
-          <Box
-            sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              borderRadius: 3,
-              p: 3,
-              color: "white",
-              position: "relative",
-              overflow: "hidden",
-              minHeight: "250px",
-              animation: "slideIn 0.6s ease-out",
-              "@keyframes slideIn": {
-                "0%": { transform: "translateY(20px)", opacity: 0 },
-                "100%": { transform: "translateY(0)", opacity: 1 },
-              },
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                top: "-50%",
-                right: "-20%",
-                width: "200px",
-                height: "200px",
-                background: "rgba(255, 255, 255, 0.1)",
-                borderRadius: "50%",
-              },
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                bottom: "-30%",
-                left: "-10%",
-                width: "150px",
-                height: "150px",
-                background: "rgba(255, 255, 255, 0.1)",
-                borderRadius: "50%",
-              },
-            }}
-          >
-            <Box sx={{ position: "relative", zIndex: 1 }}>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}
-              >
-                <CreditCard size={32} />
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  HOTEL ACCESS CARD
-                </Typography>
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  Guest Name
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {bookingDetails?.Customer_Name}
-                </Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 2,
-                  mb: 2,
-                }}
-              >
-                <Box>
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    Room Number
-                  </Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {bookingDetails?.Room_Number}
+        <DialogContent sx={{ pt: 3 }}>
+          <Box ref={keycardRef} sx={{ p: 2 }}>
+            <Box
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                borderRadius: 3,
+                p: 3,
+                color: "white",
+                position: "relative",
+                overflow: "hidden",
+                minHeight: "250px",
+                animation: "slideIn 0.6s ease-out",
+                "@keyframes slideIn": {
+                  "0%": { transform: "translateY(20px)", opacity: 0 },
+                  "100%": { transform: "translateY(0)", opacity: 1 },
+                },
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: "-50%",
+                  right: "-20%",
+                  width: "200px",
+                  height: "200px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "50%",
+                },
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  bottom: "-30%",
+                  left: "-10%",
+                  width: "150px",
+                  height: "150px",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "50%",
+                },
+              }}
+            >
+              <Box sx={{ position: "relative", zIndex: 1 }}>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}
+                >
+                  <CreditCard size={32} />
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    HOTEL ACCESS CARD
                   </Typography>
                 </Box>
-                <Box>
+
+                <Box sx={{ mb: 2 }}>
                   <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    Room Type
+                    Guest Name
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {bookingDetails?.Room_Type}
+                    {bookingDetails?.Customer_Name}
                   </Typography>
                 </Box>
-              </Box>
 
-              <Divider sx={{ bgcolor: "rgba(255,255,255,0.3)", my: 2 }} />
-
-              <Box
-                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
-              >
-                <Box>
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    Check-In
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {bookingDetails?.Check_In_Date &&
-                      new Date(bookingDetails.Check_In_Date).toLocaleDateString(
-                        "en-GB",
-                        { day: "2-digit", month: "short" }
-                      )}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                    Check-Out
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {bookingDetails?.Check_Out_Date &&
-                      new Date(
-                        bookingDetails.Check_Out_Date
-                      ).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                      })}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Divider sx={{ bgcolor: "rgba(255,255,255,0.3)", my: 2 }} />
-
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  Total Amount (incl. GST)
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  ₹{Number(bookingDetails?.Total_Amount).toFixed(2)}
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                  GST @{" "}
-                  {(() => {
-                    const totalAmount = Number(bookingDetails?.Total_Amount);
-                    const nights = Math.ceil(
-                      (new Date(bookingDetails?.Check_Out_Date) -
-                        new Date(bookingDetails?.Check_In_Date)) /
-                        (1000 * 60 * 60 * 24)
-                    );
-                    const pricePerNight = totalAmount / nights;
-                    const calc = calculateTotalWithGST(pricePerNight, nights);
-                    return calc.gstRate;
-                  })()}
-                  % included
-                </Typography>
-              </Box>
-
-              <Box
-                sx={{
-                  pt: 2,
-                  borderTop: "1px solid rgba(255,255,255,0.3)",
-                }}
-              >
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                  Booking ID
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 600, fontFamily: "monospace" }}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 2,
+                    mb: 2,
+                  }}
                 >
-                  #{bookingDetails?.Booking_ID}
-                </Typography>
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      Room Number
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                      {bookingDetails?.Room_Number}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      Room Type
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {bookingDetails?.Room_Type}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Divider sx={{ bgcolor: "rgba(255,255,255,0.3)", my: 2 }} />
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      Check-In
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {bookingDetails?.Check_In_Date &&
+                        new Date(
+                          bookingDetails.Check_In_Date
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                        })}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      Check-Out
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {bookingDetails?.Check_Out_Date &&
+                        new Date(
+                          bookingDetails.Check_Out_Date
+                        ).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                        })}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Divider sx={{ bgcolor: "rgba(255,255,255,0.3)", my: 2 }} />
+
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                    Total Amount (incl. GST)
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    ₹{Number(bookingDetails?.Total_Amount).toFixed(2)}
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                    GST @{" "}
+                    {(() => {
+                      const totalAmount = Number(bookingDetails?.Total_Amount);
+                      const nights = Math.ceil(
+                        (new Date(bookingDetails?.Check_Out_Date) -
+                          new Date(bookingDetails?.Check_In_Date)) /
+                          (1000 * 60 * 60 * 24)
+                      );
+                      const pricePerNight = totalAmount / nights;
+                      const calc = calculateTotalWithGST(pricePerNight, nights);
+                      return calc.gstRate;
+                    })()}
+                    % included
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    pt: 2,
+                    borderTop: "1px solid rgba(255,255,255,0.3)",
+                  }}
+                >
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                    Booking ID
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, fontFamily: "monospace" }}
+                  >
+                    #{bookingDetails?.Booking_ID}
+                  </Typography>
+                </Box>
               </Box>
             </Box>
           </Box>
