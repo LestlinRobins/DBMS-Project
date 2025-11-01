@@ -144,6 +144,20 @@ const createAppTheme = (mode) =>
           },
         },
       },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 18,
+            backgroundColor: mode === "dark" ? "#1e1e1e" : "#ffffff",
+            backgroundImage: "none",
+            boxShadow:
+              mode === "dark"
+                ? "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3)"
+                : "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          },
+        },
+      },
       MuiChip: {
         styleOverrides: {
           root: {

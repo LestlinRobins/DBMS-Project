@@ -360,11 +360,7 @@ const RoomManagement = () => {
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow
-                  sx={{
-                    backgroundColor: "background.default",
-                  }}
-                >
+                <TableRow>
                   <TableCell
                     sx={{
                       fontWeight: "bold",

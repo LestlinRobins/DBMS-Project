@@ -192,9 +192,216 @@ app.delete("/rooms/:id", (req, res) => {
 
 // Bookings Section
 app.get("/bookings", (req, res) => {
-  db.query("SELECT * FROM Booking", (err, results) => {
+  const { status, search, sortBy } = req.query;
+  let query = `
+    SELECT 
+      b.Booking_ID,
+      b.Customer_ID,
+      b.Room_ID,
+      b.Check_In_Date,
+      b.Check_Out_Date,
+      b.Booking_Date,
+      b.Total_Amount,
+      b.Booking_Status,
+      c.Name as Customer_Name,
+      c.Phone as Customer_Phone,
+      r.Room_Number,
+      r.Room_Type,
+      r.Floor_Number
+    FROM Booking b
+    JOIN Customer c ON b.Customer_ID = c.Customer_ID
+    JOIN room r ON b.Room_ID = r.Room_ID
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (status && status !== "All") {
+    query += " AND b.Booking_Status = ?";
+    params.push(status);
+  }
+
+  if (search) {
+    query +=
+      " AND (c.Name LIKE ? OR r.Room_Number LIKE ? OR b.Booking_ID LIKE ?)";
+    const searchTerm = `%${search}%`;
+    params.push(searchTerm, searchTerm, searchTerm);
+  }
+
+  if (sortBy === "booking_date") {
+    query += " ORDER BY b.Booking_Date DESC";
+  } else if (sortBy === "check_in") {
+    query += " ORDER BY b.Check_In_Date ASC";
+  } else if (sortBy === "customer") {
+    query += " ORDER BY c.Name ASC";
+  } else {
+    query += " ORDER BY b.Booking_ID DESC";
+  }
+
+  db.query(query, params, (err, results) => {
     if (err) return res.status(500).json({ error: "Database query failed" });
     res.json(results);
+  });
+});
+
+app.get("/bookings/:id", (req, res) => {
+  const { id } = req.params;
+  const query = `
+    SELECT 
+      b.*,
+      c.Name as Customer_Name,
+      c.Phone as Customer_Phone,
+      c.Email as Customer_Email,
+      c.Address as Customer_Address,
+      r.Room_Number,
+      r.Room_Type,
+      r.Price_Per_Night,
+      r.Floor_Number
+    FROM Booking b
+    JOIN Customer c ON b.Customer_ID = c.Customer_ID
+    JOIN room r ON b.Room_ID = r.Room_ID
+    WHERE b.Booking_ID = ?
+  `;
+
+  db.query(query, [id], (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Booking not found" });
+    res.json(results[0]);
+  });
+});
+
+app.get("/rooms/available", (req, res) => {
+  const { checkIn, checkOut } = req.query;
+
+  if (!checkIn || !checkOut) {
+    return res
+      .status(400)
+      .json({ error: "Check-in and check-out dates are required" });
+  }
+
+  const query = `
+    SELECT * FROM room
+    WHERE Room_ID NOT IN (
+      SELECT Room_ID FROM Booking
+      WHERE Booking_Status = 'Active'
+      AND (
+        (Check_In_Date <= ? AND Check_Out_Date >= ?)
+        OR (Check_In_Date <= ? AND Check_Out_Date >= ?)
+        OR (Check_In_Date >= ? AND Check_Out_Date <= ?)
+      )
+    )
+    ORDER BY Room_Number ASC
+  `;
+
+  db.query(
+    query,
+    [checkOut, checkIn, checkIn, checkOut, checkIn, checkOut],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: "Database query failed" });
+      res.json(results);
+    }
+  );
+});
+
+app.post("/bookings", (req, res) => {
+  const { customer_id, room_id, check_in_date, check_out_date, total_amount } =
+    req.body;
+
+  if (!customer_id || !room_id || !check_in_date || !check_out_date) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  // Use provided total_amount if available, otherwise calculate from room price
+  if (total_amount) {
+    // Use the total_amount provided from frontend (includes GST)
+    const query =
+      "INSERT INTO Booking (Customer_ID, Room_ID, Check_In_Date, Check_Out_Date, Total_Amount, Booking_Status) VALUES (?, ?, ?, ?, ?, 'Active')";
+    const values = [
+      customer_id,
+      room_id,
+      check_in_date,
+      check_out_date,
+      total_amount,
+    ];
+
+    db.query(query, values, (err, result) => {
+      if (err)
+        return res.status(500).json({ error: "Failed to create booking" });
+      res.status(201).json({
+        message: "Booking created successfully",
+        bookingId: result.insertId,
+      });
+    });
+  } else {
+    // Fallback: Get room price to calculate total (without GST)
+    db.query(
+      "SELECT Price_Per_Night FROM room WHERE Room_ID = ?",
+      [room_id],
+      (err, roomResults) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ error: "Failed to fetch room details" });
+        if (roomResults.length === 0)
+          return res.status(404).json({ error: "Room not found" });
+
+        const pricePerNight = roomResults[0].Price_Per_Night;
+        const checkIn = new Date(check_in_date);
+        const checkOut = new Date(check_out_date);
+        const days = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        const totalAmount = days * pricePerNight;
+
+        const query =
+          "INSERT INTO Booking (Customer_ID, Room_ID, Check_In_Date, Check_Out_Date, Total_Amount, Booking_Status) VALUES (?, ?, ?, ?, ?, 'Active')";
+        const values = [
+          customer_id,
+          room_id,
+          check_in_date,
+          check_out_date,
+          totalAmount,
+        ];
+
+        db.query(query, values, (err, result) => {
+          if (err)
+            return res.status(500).json({ error: "Failed to create booking" });
+          res.status(201).json({
+            message: "Booking created successfully",
+            bookingId: result.insertId,
+            totalAmount: totalAmount,
+          });
+        });
+      }
+    );
+  }
+});
+
+app.put("/bookings/:id", (req, res) => {
+  const { id } = req.params;
+  const { booking_status } = req.body;
+
+  if (!booking_status) {
+    return res.status(400).json({ error: "Booking status is required" });
+  }
+
+  const query = "UPDATE Booking SET Booking_Status = ? WHERE Booking_ID = ?";
+
+  db.query(query, [booking_status, id], (err, result) => {
+    if (err) return res.status(500).json({ error: "Failed to update booking" });
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: "Booking not found" });
+    res.json({ message: "Booking updated successfully" });
+  });
+});
+
+app.delete("/bookings/:id", (req, res) => {
+  const { id } = req.params;
+
+  db.query("DELETE FROM Booking WHERE Booking_ID = ?", [id], (err, result) => {
+    if (err) return res.status(500).json({ error: "Failed to delete booking" });
+    if (result.affectedRows === 0)
+      return res.status(404).json({ error: "Booking not found" });
+    res.json({ message: "Booking deleted successfully" });
   });
 });
 
