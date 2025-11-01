@@ -405,4 +405,194 @@ app.delete("/bookings/:id", (req, res) => {
   });
 });
 
+// Payments Section
+app.get("/bookings", (req, res) => {
+  const query = `
+    SELECT 
+      b.Booking_ID,
+      b.Customer_ID,
+      b.Room_ID,
+      b.Check_In_Date,
+      b.Check_Out_Date,
+      b.Booking_Date,
+      b.Total_Amount,
+      b.Booking_Status,
+      c.Name as CustomerName,
+      c.Phone as CustomerPhone,
+      r.Room_Number,
+      r.Room_Type
+    FROM Booking b
+    JOIN Customer c ON b.Customer_ID = c.Customer_ID
+    JOIN room r ON b.Room_ID = r.Room_ID
+    ORDER BY b.Booking_ID DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
+app.get("/payments/:bookingId", (req, res) => {
+  const { bookingId } = req.params;
+
+  const query = `
+    SELECT 
+      Payment_ID,
+      Booking_ID,
+      Payment_Date,
+      Payment_Mode,
+      Amount_Paid,
+      Balance_Amount
+    FROM Payment
+    WHERE Booking_ID = ?
+    ORDER BY Payment_Date DESC
+  `;
+
+  db.query(query, [bookingId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
+app.post("/payments", (req, res) => {
+  const { booking_id, payment_mode, amount_paid } = req.body;
+
+  if (!booking_id || !payment_mode || !amount_paid) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  // First, get the booking total amount and calculate current balance
+  db.query(
+    "SELECT Total_Amount FROM Booking WHERE Booking_ID = ?",
+    [booking_id],
+    (err, bookingResults) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ error: "Failed to fetch booking details" });
+      if (bookingResults.length === 0)
+        return res.status(404).json({ error: "Booking not found" });
+
+      const totalAmount = bookingResults[0].Total_Amount;
+
+      // Get total paid so far
+      db.query(
+        "SELECT SUM(Amount_Paid) as TotalPaid FROM Payment WHERE Booking_ID = ?",
+        [booking_id],
+        (err, paymentResults) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ error: "Failed to fetch payment details" });
+
+          const totalPaid = paymentResults[0].TotalPaid || 0;
+          const newBalance = totalAmount - totalPaid - parseFloat(amount_paid);
+
+          // Validate that payment doesn't exceed balance
+          if (newBalance < 0) {
+            return res.status(400).json({
+              error: "Payment amount exceeds balance due",
+            });
+          }
+
+          // Insert the payment record
+          const query =
+            "INSERT INTO Payment (Booking_ID, Payment_Mode, Amount_Paid, Balance_Amount) VALUES (?, ?, ?, ?)";
+          const values = [booking_id, payment_mode, amount_paid, newBalance];
+
+          db.query(query, values, (err, result) => {
+            if (err)
+              return res
+                .status(500)
+                .json({ error: "Failed to record payment" });
+            res.status(201).json({
+              message: "Payment recorded successfully",
+              paymentId: result.insertId,
+              balanceAmount: newBalance,
+            });
+          });
+        }
+      );
+    }
+  );
+});
+
+app.delete("/payments/:id", (req, res) => {
+  const { id } = req.params;
+
+  // First get the payment details to update subsequent payments
+  db.query(
+    "SELECT Booking_ID, Amount_Paid FROM Payment WHERE Payment_ID = ?",
+    [id],
+    (err, paymentResults) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ error: "Failed to fetch payment details" });
+      if (paymentResults.length === 0)
+        return res.status(404).json({ error: "Payment not found" });
+
+      const bookingId = paymentResults[0].Booking_ID;
+      const deletedAmount = paymentResults[0].Amount_Paid;
+
+      // Delete the payment
+      db.query(
+        "DELETE FROM Payment WHERE Payment_ID = ?",
+        [id],
+        (err, result) => {
+          if (err)
+            return res.status(500).json({ error: "Failed to delete payment" });
+
+          // Recalculate balances for all payments of this booking
+          db.query(
+            "SELECT Total_Amount FROM Booking WHERE Booking_ID = ?",
+            [bookingId],
+            (err, bookingResults) => {
+              if (err || bookingResults.length === 0) {
+                return res.json({
+                  message: "Payment deleted successfully",
+                });
+              }
+
+              const totalAmount = bookingResults[0].Total_Amount;
+
+              // Get all remaining payments for this booking
+              db.query(
+                "SELECT Payment_ID, Amount_Paid FROM Payment WHERE Booking_ID = ? ORDER BY Payment_Date ASC",
+                [bookingId],
+                (err, payments) => {
+                  if (err || payments.length === 0) {
+                    return res.json({
+                      message: "Payment deleted successfully",
+                    });
+                  }
+
+                  // Update balance for each payment
+                  let runningPaid = 0;
+                  payments.forEach((payment, index) => {
+                    runningPaid += payment.Amount_Paid;
+                    const newBalance = totalAmount - runningPaid;
+
+                    db.query(
+                      "UPDATE Payment SET Balance_Amount = ? WHERE Payment_ID = ?",
+                      [newBalance, payment.Payment_ID],
+                      (err) => {
+                        if (err)
+                          console.error("Failed to update balance:", err);
+                      }
+                    );
+                  });
+
+                  res.json({ message: "Payment deleted successfully" });
+                }
+              );
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
 app.listen(5000, () => console.log("Server running on http://localhost:5000"));

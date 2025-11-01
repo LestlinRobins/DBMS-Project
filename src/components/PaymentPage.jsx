@@ -31,6 +31,9 @@ import {
   Receipt,
   Eye,
   Trash2,
+  CreditCard,
+  Smartphone,
+  Banknote,
 } from "lucide-react";
 
 const PaymentPage = () => {
@@ -44,6 +47,8 @@ const PaymentPage = () => {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState(null);
   const [formData, setFormData] = useState({
     booking_id: "",
     payment_mode: "Cash",
@@ -61,7 +66,7 @@ const PaymentPage = () => {
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/bookings");
+      const response = await fetch("http://localhost:5000/bookings");
       const allBookings = await response.json();
 
       // Fetch payments for each booking to calculate balance
@@ -69,17 +74,33 @@ const PaymentPage = () => {
         allBookings.map(async (booking) => {
           try {
             const paymentsRes = await fetch(
-              `http://localhost:5000/api/payments/${booking.Booking_ID}`
+              `http://localhost:5000/payments/${booking.Booking_ID}`
             );
             const paymentsData = await paymentsRes.json();
             const totalPaid = paymentsData.reduce(
-              (sum, p) => sum + (p.Amount_Paid || 0),
+              (sum, p) => sum + (parseFloat(p.Amount_Paid) || 0),
               0
             );
-            const balance = booking.Total_Amount - totalPaid;
-            return { ...booking, totalPaid, balance };
+            const totalAmount = parseFloat(booking.Total_Amount) || 0;
+            const balance = totalAmount - totalPaid;
+            return {
+              ...booking,
+              CustomerName:
+                booking.CustomerName || booking.Customer_Name || "Unknown",
+              Total_Amount: totalAmount,
+              totalPaid,
+              balance,
+            };
           } catch {
-            return { ...booking, totalPaid: 0, balance: booking.Total_Amount };
+            const totalAmount = parseFloat(booking.Total_Amount) || 0;
+            return {
+              ...booking,
+              CustomerName:
+                booking.CustomerName || booking.Customer_Name || "Unknown",
+              Total_Amount: totalAmount,
+              totalPaid: 0,
+              balance: totalAmount,
+            };
           }
         })
       );
@@ -94,10 +115,16 @@ const PaymentPage = () => {
   const fetchPayments = async (bookingId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/payments/${bookingId}`
+        `http://localhost:5000/payments/${bookingId}`
       );
       const data = await response.json();
-      setPayments(data);
+      // Convert numeric fields to proper numbers
+      const paymentsWithNumbers = data.map((payment) => ({
+        ...payment,
+        Amount_Paid: parseFloat(payment.Amount_Paid) || 0,
+        Balance_Amount: parseFloat(payment.Balance_Amount) || 0,
+      }));
+      setPayments(paymentsWithNumbers);
     } catch (err) {
       console.error("Error fetching payments:", err);
     }
@@ -170,7 +197,7 @@ const PaymentPage = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/payments", {
+      const response = await fetch("http://localhost:5000/payments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -189,71 +216,139 @@ const PaymentPage = () => {
     }
   };
 
-  const handleDeletePayment = async (paymentId) => {
-    if (window.confirm("Are you sure you want to delete this payment?")) {
-      try {
-        const response = await fetch(
-          `http://localhost:5000/api/payments/${paymentId}`,
-          {
-            method: "DELETE",
-          }
-        );
-        if (response.ok) {
-          await fetchPayments(selectedBooking.Booking_ID);
-          fetchBookings();
+  const handleOpenDeleteDialog = (payment) => {
+    setPaymentToDelete(payment);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+    setPaymentToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!paymentToDelete) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/payments/${paymentToDelete.Payment_ID}`,
+        {
+          method: "DELETE",
         }
-      } catch (err) {
-        console.error("Error deleting payment:", err);
+      );
+      if (response.ok) {
+        handleCloseDeleteDialog();
+        await fetchPayments(selectedBooking.Booking_ID);
+        fetchBookings();
       }
+    } catch (err) {
+      console.error("Error deleting payment:", err);
     }
   };
 
-  const handlePrintReceipt = (booking) => {
-    // Create a printable receipt
-    const receiptContent = `
-      <html>
-        <head>
-          <title>Payment Receipt</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .details { margin: 20px 0; }
-            .details div { margin: 10px 0; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f5f5f5; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Payment Receipt</h1>
-            <p>Hotel Management System</p>
+  const handlePrintReceipt = async (booking) => {
+    // Dynamically import html2canvas
+    const html2canvas = (await import("html2canvas")).default;
+
+    // Create a temporary container for the receipt
+    const receiptContainer = document.createElement("div");
+    receiptContainer.style.position = "absolute";
+    receiptContainer.style.left = "-9999px";
+    receiptContainer.style.width = "600px";
+    receiptContainer.style.backgroundColor = "white";
+    receiptContainer.style.padding = "32px";
+    receiptContainer.style.fontFamily = "Arial, sans-serif";
+
+    receiptContainer.innerHTML = `
+      <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px dotted #ddd;">
+        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 4px;">Payment Receipt</div>
+        <div style="font-size: 0.875rem; color: #666;">Hotel Management System</div>
+      </div>
+      
+      <div style="margin: 24px 0;">
+        <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 12px;">BOOKING DETAILS</div>
+        <div style="display: grid; gap: 8px; font-size: 0.95rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Booking ID:</span>
+            <span style="font-weight: 600;">#${booking.Booking_ID}</span>
           </div>
-          <div class="details">
-            <div><strong>Booking ID:</strong> ${booking.Booking_ID}</div>
-            <div><strong>Customer:</strong> ${booking.CustomerName}</div>
-            <div><strong>Room:</strong> ${booking.Room_Number} (${
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Customer:</span>
+            <span style="font-weight: 600;">${booking.CustomerName}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Room:</span>
+            <span style="font-weight: 600;">${booking.Room_Number} (${
       booking.Room_Type
-    })</div>
-            <div><strong>Check-In:</strong> ${booking.Check_In_Date}</div>
-            <div><strong>Check-Out:</strong> ${booking.Check_Out_Date}</div>
-            <div><strong>Total Amount:</strong> ₹${booking.Total_Amount?.toFixed(
-              2
-            )}</div>
-            <div><strong>Amount Paid:</strong> ₹${booking.totalPaid?.toFixed(
-              2
-            )}</div>
-            <div><strong>Balance:</strong> ₹${booking.balance?.toFixed(2)}</div>
+    })</span>
           </div>
-          <p style="text-align: center; margin-top: 50px;">Thank you for your payment!</p>
-        </body>
-      </html>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Check-In:</span>
+            <span style="font-weight: 500;">${new Date(
+              booking.Check_In_Date
+            ).toLocaleDateString()}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Check-Out:</span>
+            <span style="font-weight: 500;">${new Date(
+              booking.Check_Out_Date
+            ).toLocaleDateString()}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top: 2px dotted #ddd; border-bottom: 2px dotted #ddd; padding: 16px 0; margin: 24px 0;">
+        <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin-bottom: 12px;">PAYMENT SUMMARY</div>
+        <div style="display: grid; gap: 8px; font-size: 0.95rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Total Amount:</span>
+            <span style="font-weight: 600;">₹${booking.Total_Amount?.toFixed(
+              2
+            )}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #666;">Amount Paid:</span>
+            <span style="font-weight: 600; color: #4caf50;">₹${booking.totalPaid?.toFixed(
+              2
+            )}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px dotted #ddd; margin-top: 4px;">
+            <span style="font-weight: 600; font-size: 1.1rem;">Balance Due:</span>
+            <span style="font-weight: 700; font-size: 1.1rem; color: ${
+              booking.balance > 0 ? "#ff9800" : "#4caf50"
+            };">₹${booking.balance?.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 32px; font-size: 0.875rem; color: #666;">
+        Thank you for your payment!
+      </div>
     `;
 
-    const printWindow = window.open("", "_blank");
-    printWindow.document.write(receiptContent);
-    printWindow.document.close();
-    printWindow.print();
+    document.body.appendChild(receiptContainer);
+
+    try {
+      const canvas = await html2canvas(receiptContainer, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
+
+      const link = document.createElement("a");
+      link.download = `payment-receipt-${booking.Booking_ID}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      alert("Failed to generate receipt. Please try again.");
+    } finally {
+      document.body.removeChild(receiptContainer);
+    }
   };
 
   return (
@@ -325,87 +420,91 @@ const PaymentPage = () => {
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow
-                  sx={{
-                    backgroundColor: "background.default",
-                  }}
-                >
+                <TableRow>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Booking ID
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Customer
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Room
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Total Amount
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Paid
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Balance
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Status
                   </TableCell>
                   <TableCell
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
+                      color: "text.secondary",
                     }}
                   >
                     Actions
@@ -419,64 +518,76 @@ const PaymentPage = () => {
                     hover
                     sx={{
                       "&:last-child td, &:last-child th": { border: 0 },
+                      transition: "all 0.2s",
+                      "&:hover": {
+                        backgroundColor: "action.hover",
+                      },
                     }}
                   >
                     <TableCell
                       sx={{
-                        fontWeight: "bold",
-                        fontSize: "0.9rem",
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        fontFamily: "monospace",
                       }}
                     >
                       #{booking.Booking_ID}
                     </TableCell>
-                    <TableCell
-                      sx={{ fontSize: "0.9rem", fontWeight: "medium" }}
-                    >
+                    <TableCell sx={{ fontSize: "0.875rem", fontWeight: 500 }}>
                       {booking.CustomerName}
                     </TableCell>
-                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                    <TableCell>
                       <Chip
-                        label={`${booking.Room_Number} (${booking.Room_Type})`}
+                        label={`${booking.Room_Number} • ${booking.Room_Type}`}
                         size="small"
                         variant="outlined"
                         color="primary"
+                        sx={{ fontWeight: 500 }}
                       />
                     </TableCell>
-                    <TableCell sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>
+                    <TableCell sx={{ fontSize: "0.875rem", fontWeight: 600 }}>
                       ₹{booking.Total_Amount?.toFixed(2)}
                     </TableCell>
-                    <TableCell
-                      sx={{ fontSize: "0.9rem", fontWeight: "medium" }}
-                    >
+                    <TableCell>
                       <Chip
                         label={`₹${booking.totalPaid?.toFixed(2)}`}
                         size="small"
                         color="success"
                         variant="outlined"
+                        sx={{ fontWeight: 500 }}
                       />
                     </TableCell>
-                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                    <TableCell>
                       <Chip
                         label={`₹${booking.balance?.toFixed(2)}`}
                         size="small"
                         color={booking.balance > 0 ? "warning" : "success"}
+                        sx={{ fontWeight: 500 }}
                       />
                     </TableCell>
-                    <TableCell sx={{ fontSize: "0.9rem" }}>
+                    <TableCell>
                       <Chip
-                        label={booking.balance > 0 ? "Pending" : "Paid"}
+                        label={booking.balance > 0 ? "Pending" : "Fully Paid"}
                         size="small"
                         color={booking.balance > 0 ? "warning" : "success"}
+                        variant={booking.balance > 0 ? "filled" : "outlined"}
+                        sx={{ fontWeight: 500 }}
                       />
                     </TableCell>
-                    <TableCell sx={{ fontSize: "0.9rem" }}>
-                      <div style={{ display: "flex", gap: "8px" }}>
+                    <TableCell>
+                      <div style={{ display: "flex", gap: "4px" }}>
                         <IconButton
                           size="small"
                           color="primary"
                           onClick={() => handleOpenDialog(booking)}
                           disabled={booking.balance <= 0}
                           title="Record Payment"
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: "primary.light",
+                              color: "white",
+                            },
+                          }}
                         >
                           <DollarSign size={18} />
                         </IconButton>
@@ -485,6 +596,12 @@ const PaymentPage = () => {
                           color="info"
                           onClick={() => handleOpenHistoryDialog(booking)}
                           title="View Payment History"
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: "info.light",
+                              color: "white",
+                            },
+                          }}
                         >
                           <Eye size={18} />
                         </IconButton>
@@ -492,7 +609,13 @@ const PaymentPage = () => {
                           size="small"
                           color="success"
                           onClick={() => handlePrintReceipt(booking)}
-                          title="Print Receipt"
+                          title="Download Receipt"
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: "success.light",
+                              color: "white",
+                            },
+                          }}
                         >
                           <Receipt size={18} />
                         </IconButton>
@@ -548,12 +671,41 @@ const PaymentPage = () => {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
-          Record Payment
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            fontSize: "1.25rem",
+            borderBottom: "2px dotted",
+            borderColor: "divider",
+            pb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <DollarSign size={20} />
+            </Box>
+            Record Payment
+          </Box>
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           {submitted && (
-            <Alert severity="success" sx={{ mb: 2 }}>
+            <Alert
+              severity="success"
+              sx={{
+                mb: 3,
+                borderRadius: 1,
+                "& .MuiAlert-icon": { fontSize: "1.5rem" },
+              }}
+            >
               Payment recorded successfully!
             </Alert>
           )}
@@ -564,96 +716,244 @@ const PaymentPage = () => {
               <Box
                 sx={{
                   mb: 3,
-                  p: 2,
-                  bgcolor: "background.default",
+                  p: 2.5,
+                  border: "2px dotted",
+                  borderColor: "divider",
                   borderRadius: 1,
                 }}
               >
                 <Typography
                   variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: "text.secondary",
+                    mb: 2,
+                  }}
                 >
                   Booking Details
                 </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Customer:</strong> {selectedBooking.CustomerName}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Room:</strong> {selectedBooking.Room_Number} (
-                  {selectedBooking.Room_Type})
-                </Typography>
-                <Divider sx={{ my: 1 }} />
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Total Amount:</strong> ₹
-                  {selectedBooking.Total_Amount?.toFixed(2)}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Already Paid:</strong> ₹
-                  {selectedBooking.totalPaid?.toFixed(2)}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{ fontWeight: "bold", color: "warning.main" }}
-                >
-                  <strong>Balance Due:</strong> ₹
-                  {selectedBooking.balance?.toFixed(2)}
-                </Typography>
+                <Box sx={{ display: "grid", gap: 1.5, fontSize: "0.875rem" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Booking ID:
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, fontFamily: "monospace" }}
+                    >
+                      #{selectedBooking.Booking_ID}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Customer:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {selectedBooking.CustomerName}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Room:
+                    </Typography>
+                    <Chip
+                      label={`${selectedBooking.Room_Number} • ${selectedBooking.Room_Type}`}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      sx={{ fontWeight: 500 }}
+                    />
+                  </Box>
+                </Box>
+
+                <Divider sx={{ my: 2, borderStyle: "dotted" }} />
+
+                <Box sx={{ display: "grid", gap: 1.5, fontSize: "0.875rem" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Total Amount:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      ₹{selectedBooking.Total_Amount?.toFixed(2)}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Already Paid:
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, color: "success.main" }}
+                    >
+                      ₹{selectedBooking.totalPaid?.toFixed(2)}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      pt: 1.5,
+                      borderTop: "1px dotted",
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 600, fontSize: "1.1rem" }}
+                    >
+                      Balance Due:
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: "1.1rem",
+                        color: "warning.main",
+                      }}
+                    >
+                      ₹{selectedBooking.balance?.toFixed(2)}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
 
               {/* Payment Form */}
-              <div
-                style={{
-                  display: "grid",
-                  gap: "16px",
+              <Box
+                sx={{
+                  mb: 2,
                 }}
               >
-                <FormControl fullWidth size="small">
-                  <InputLabel>Payment Mode</InputLabel>
-                  <Select
-                    name="payment_mode"
-                    value={formData.payment_mode}
-                    label="Payment Mode"
-                    onChange={handleInputChange}
-                  >
-                    <MenuItem value="Cash">Cash</MenuItem>
-                    <MenuItem value="Card">Card</MenuItem>
-                    <MenuItem value="UPI">UPI</MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  fullWidth
-                  label="Amount to Pay"
-                  name="amount_paid"
-                  type="number"
-                  value={formData.amount_paid}
-                  onChange={handleInputChange}
-                  required
-                  variant="outlined"
-                  size="small"
-                  inputProps={{
-                    step: "0.01",
-                    max: selectedBooking.balance,
-                    min: 0.01,
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: "text.secondary",
+                    mb: 2,
                   }}
-                  helperText={`Maximum: ₹${selectedBooking.balance?.toFixed(
-                    2
-                  )}`}
-                />
-              </div>
+                >
+                  Payment Details
+                </Typography>
+                <Box sx={{ display: "grid", gap: 2 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Payment Mode</InputLabel>
+                    <Select
+                      name="payment_mode"
+                      value={formData.payment_mode}
+                      label="Payment Mode"
+                      onChange={handleInputChange}
+                    >
+                      <MenuItem value="Cash">
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <Banknote size={15} />
+                          Cash
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="Card">
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <CreditCard size={15} />
+                          Card
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="UPI">
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <Smartphone size={15} />
+                          UPI
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="Other">
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <DollarSign size={15} />
+                          Other
+                        </Box>
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    fullWidth
+                    label="Amount to Pay"
+                    name="amount_paid"
+                    type="number"
+                    value={formData.amount_paid}
+                    onChange={handleInputChange}
+                    required
+                    variant="outlined"
+                    inputProps={{
+                      step: "0.01",
+                      max: selectedBooking.balance,
+                      min: 0.01,
+                    }}
+                    helperText={`Maximum amount: ₹${selectedBooking.balance?.toFixed(
+                      2
+                    )}`}
+                    sx={{
+                      "& .MuiInputBase-input": {
+                        fontSize: "1.1rem",
+                        fontWeight: 600,
+                      },
+                    }}
+                  />
+                </Box>
+              </Box>
             </>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleCloseDialog} variant="outlined">
+        <DialogActions
+          sx={{
+            p: 2.5,
+            borderTop: "2px dotted",
+            borderColor: "divider",
+            gap: 1,
+          }}
+        >
+          <Button onClick={handleCloseDialog} variant="outlined" size="large">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             variant="contained"
             disabled={!formData.amount_paid || submitted}
+            size="large"
+            startIcon={<DollarSign size={18} />}
           >
             Record Payment
           </Button>
@@ -672,8 +972,30 @@ const PaymentPage = () => {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 600, fontSize: "1.25rem" }}>
-          Payment History
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            fontSize: "1.25rem",
+            borderBottom: "2px dotted",
+            borderColor: "divider",
+            pb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Receipt size={20} />
+            </Box>
+            Payment History
+          </Box>
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           {selectedBooking && (
@@ -682,70 +1004,201 @@ const PaymentPage = () => {
               <Box
                 sx={{
                   mb: 3,
-                  p: 2,
-                  bgcolor: "background.default",
+                  p: 2.5,
+                  border: "2px dotted",
+                  borderColor: "divider",
                   borderRadius: 1,
                 }}
               >
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Booking ID:</strong> #{selectedBooking.Booking_ID}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>Customer:</strong> {selectedBooking.CustomerName}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Room:</strong> {selectedBooking.Room_Number} (
-                  {selectedBooking.Room_Type})
-                </Typography>
+                <Box sx={{ display: "grid", gap: 1.5, fontSize: "0.875rem" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Booking ID:
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, fontFamily: "monospace" }}
+                    >
+                      #{selectedBooking.Booking_ID}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Customer:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {selectedBooking.CustomerName}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Room:
+                    </Typography>
+                    <Chip
+                      label={`${selectedBooking.Room_Number} • ${selectedBooking.Room_Type}`}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      sx={{ fontWeight: 500 }}
+                    />
+                  </Box>
+                </Box>
               </Box>
 
               {/* Payment History Table */}
               {payments.length > 0 ? (
                 <TableContainer>
-                  <Table size="small">
+                  <Table>
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: "background.default" }}>
-                        <TableCell sx={{ fontWeight: "bold" }}>
+                      <TableRow>
+                        <TableCell
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: "text.secondary",
+                          }}
+                        >
                           Payment ID
                         </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Date</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Mode</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Amount
+                        <TableCell
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: "text.secondary",
+                          }}
+                        >
+                          Date
                         </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Balance
+                        <TableCell
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: "text.secondary",
+                          }}
+                        >
+                          Mode
                         </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
+                        <TableCell
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: "text.secondary",
+                          }}
+                        >
+                          Amount Paid
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: "text.secondary",
+                          }}
+                        >
+                          Balance After
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            color: "text.secondary",
+                          }}
+                        >
                           Actions
                         </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {payments.map((payment) => (
-                        <TableRow key={payment.Payment_ID} hover>
-                          <TableCell>#{payment.Payment_ID}</TableCell>
-                          <TableCell>{payment.Payment_Date}</TableCell>
+                        <TableRow
+                          key={payment.Payment_ID}
+                          hover
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: "action.hover",
+                            },
+                          }}
+                        >
+                          <TableCell
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            #{payment.Payment_ID}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.875rem" }}>
+                            {new Date(payment.Payment_Date).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Chip
                               label={payment.Payment_Mode}
                               size="small"
                               variant="outlined"
+                              color="primary"
+                              sx={{ fontWeight: 500 }}
                             />
                           </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
+                          <TableCell
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              color: "success.main",
+                            }}
+                          >
                             ₹{payment.Amount_Paid?.toFixed(2)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            sx={{ fontSize: "0.875rem", fontWeight: 500 }}
+                          >
                             ₹{payment.Balance_Amount?.toFixed(2)}
                           </TableCell>
                           <TableCell>
                             <IconButton
                               size="small"
                               color="error"
-                              onClick={() =>
-                                handleDeletePayment(payment.Payment_ID)
-                              }
+                              onClick={() => handleOpenDeleteDialog(payment)}
+                              title="Delete Payment"
+                              sx={{
+                                "&:hover": {
+                                  backgroundColor: "error.light",
+                                  color: "white",
+                                },
+                              }}
                             >
                               <Trash2 size={16} />
                             </IconButton>
@@ -756,20 +1209,249 @@ const PaymentPage = () => {
                   </Table>
                 </TableContainer>
               ) : (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ textAlign: "center", py: 2 }}
+                <Box
+                  sx={{
+                    textAlign: "center",
+                    py: 6,
+                    px: 2,
+                  }}
                 >
-                  No payment history found.
-                </Typography>
+                  <Box
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: "50%",
+                      bgcolor: "action.hover",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 16px",
+                    }}
+                  >
+                    <Receipt size={32} color="#999" />
+                  </Box>
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{ fontWeight: 500 }}
+                  >
+                    No payment history found
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    No payments have been recorded for this booking yet.
+                  </Typography>
+                </Box>
               )}
             </>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleCloseHistoryDialog} variant="outlined">
+        <DialogActions
+          sx={{
+            p: 2.5,
+            borderTop: "2px dotted",
+            borderColor: "divider",
+          }}
+        >
+          <Button
+            onClick={handleCloseHistoryDialog}
+            variant="outlined"
+            size="large"
+          >
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Payment Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            fontSize: "1.25rem",
+            borderBottom: "2px dotted",
+            borderColor: "divider",
+            pb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                bgcolor: "error.main",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Trash2 size={20} color="white" />
+            </Box>
+            Delete Payment
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {paymentToDelete && (
+            <Box>
+              <Alert severity="warning" sx={{ mb: 3, borderRadius: 1 }}>
+                This action cannot be undone. All subsequent payment balances
+                will be recalculated.
+              </Alert>
+
+              <Box
+                sx={{
+                  p: 2.5,
+                  border: "2px dotted",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: "text.secondary",
+                    mb: 2,
+                  }}
+                >
+                  Payment Details
+                </Typography>
+                <Box sx={{ display: "grid", gap: 1.5, fontSize: "0.875rem" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Payment ID:
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, fontFamily: "monospace" }}
+                    >
+                      #{paymentToDelete.Payment_ID}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Payment Date:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {new Date(
+                        paymentToDelete.Payment_Date
+                      ).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      Payment Mode:
+                    </Typography>
+                    <Chip
+                      label={paymentToDelete.Payment_Mode}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      sx={{ fontWeight: 500 }}
+                    />
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      pt: 1.5,
+                      borderTop: "1px dotted",
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Typography
+                      variant="body1"
+                      sx={{ fontWeight: 600, fontSize: "1.1rem" }}
+                    >
+                      Amount Paid:
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: "1.1rem",
+                        color: "error.main",
+                      }}
+                    >
+                      ₹{paymentToDelete.Amount_Paid?.toFixed(2)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  mt: 3,
+                  textAlign: "center",
+                  color: "text.secondary",
+                  fontStyle: "italic",
+                }}
+              >
+                Are you sure you want to delete this payment?
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions
+          sx={{
+            p: 2.5,
+            borderTop: "2px dotted",
+            borderColor: "divider",
+            gap: 1,
+          }}
+        >
+          <Button
+            onClick={handleCloseDeleteDialog}
+            variant="outlined"
+            size="large"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            size="large"
+            startIcon={<Trash2 size={18} />}
+          >
+            Delete Payment
           </Button>
         </DialogActions>
       </Dialog>
