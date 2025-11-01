@@ -20,7 +20,21 @@ import PaymentPage from "./components/PaymentPage";
 // Separate component that uses the theme
 const AppContent = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
+  const [selectedBookingForPayment, setSelectedBookingForPayment] =
+    useState(null);
   const { theme } = useThemeMode();
+
+  const navigateToPayment = (booking) => {
+    setSelectedBookingForPayment(booking);
+    setCurrentPage("payments");
+  };
+
+  const handlePageChange = (page) => {
+    if (page !== "payments") {
+      setSelectedBookingForPayment(null);
+    }
+    setCurrentPage(page);
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -31,9 +45,9 @@ const AppContent = () => {
       case "rooms":
         return <RoomManagement />;
       case "bookings":
-        return <BookingManagement />;
+        return <BookingManagement onNavigateToPayment={navigateToPayment} />;
       case "payments":
-        return <PaymentPage />;
+        return <PaymentPage selectedBooking={selectedBookingForPayment} />;
       default:
         return <Dashboard />;
     }
@@ -106,7 +120,7 @@ const AppContent = () => {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setCurrentPage(item.id)}
+                onClick={() => handlePageChange(item.id)}
                 className={`nav-item ${
                   currentPage === item.id ? "active" : ""
                 }`}

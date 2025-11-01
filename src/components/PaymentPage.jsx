@@ -36,7 +36,7 @@ import {
   Banknote,
 } from "lucide-react";
 
-const PaymentPage = () => {
+const PaymentPage = ({ selectedBooking: initialSelectedBooking }) => {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -58,6 +58,30 @@ const PaymentPage = () => {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  // Auto-open payment dialog when booking is passed from another page
+  useEffect(() => {
+    const loadInitialBooking = async () => {
+      if (initialSelectedBooking && bookings.length > 0) {
+        // Find the booking with payment data from the fetched bookings
+        const bookingWithPayments = bookings.find(
+          (b) => b.Booking_ID === initialSelectedBooking.Booking_ID
+        );
+
+        if (bookingWithPayments) {
+          setSelectedBooking(bookingWithPayments);
+          setFormData({
+            booking_id: bookingWithPayments.Booking_ID,
+            payment_mode: "Cash",
+            amount_paid: "",
+          });
+          setOpenDialog(true);
+        }
+      }
+    };
+
+    loadInitialBooking();
+  }, [initialSelectedBooking, bookings]);
 
   useEffect(() => {
     filterBookings();

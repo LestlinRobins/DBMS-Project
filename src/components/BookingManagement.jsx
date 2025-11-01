@@ -49,7 +49,7 @@ import {
   Filter,
 } from "lucide-react";
 
-const BookingManagement = () => {
+const BookingManagement = ({ onNavigateToPayment }) => {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -111,8 +111,39 @@ const BookingManagement = () => {
     setLoading(true);
     try {
       const response = await fetch("http://localhost:5000/bookings");
-      const data = await response.json();
-      setBookings(data);
+      const allBookings = await response.json();
+
+      // Fetch payments for each booking to calculate balance
+      const bookingsWithPayments = await Promise.all(
+        allBookings.map(async (booking) => {
+          try {
+            const paymentsRes = await fetch(
+              `http://localhost:5000/payments/${booking.Booking_ID}`
+            );
+            const paymentsData = await paymentsRes.json();
+            const totalPaid = paymentsData.reduce(
+              (sum, p) => sum + (parseFloat(p.Amount_Paid) || 0),
+              0
+            );
+            const totalAmount = parseFloat(booking.Total_Amount) || 0;
+            const balance = totalAmount - totalPaid;
+            return {
+              ...booking,
+              totalPaid,
+              balance,
+            };
+          } catch {
+            const totalAmount = parseFloat(booking.Total_Amount) || 0;
+            return {
+              ...booking,
+              totalPaid: 0,
+              balance: totalAmount,
+            };
+          }
+        })
+      );
+
+      setBookings(bookingsWithPayments);
     } catch (err) {
       console.error("Error fetching bookings:", err);
     }
@@ -780,6 +811,27 @@ const BookingManagement = () => {
                             </IconButton>
                           </>
                         )}
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() =>
+                            onNavigateToPayment && onNavigateToPayment(booking)
+                          }
+                          disabled={!booking.balance || booking.balance <= 0}
+                          title={
+                            !booking.balance || booking.balance <= 0
+                              ? "Fully Paid"
+                              : "Record Payment"
+                          }
+                          sx={{
+                            "&:hover": {
+                              backgroundColor: "info.light",
+                              color: "white",
+                            },
+                          }}
+                        >
+                          <DollarSign size={18} />
+                        </IconButton>
                         <IconButton
                           size="small"
                           color="primary"
