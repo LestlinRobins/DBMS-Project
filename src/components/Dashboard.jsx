@@ -28,8 +28,24 @@ import {
   Wallet,
   Sun,
   Moon,
+  CreditCard,
 } from "lucide-react";
 import { useThemeMode } from "../theme/ThemeContext";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -40,9 +56,20 @@ const Dashboard = () => {
   });
   const [occupancy, setOccupancy] = useState([]);
   const [roomTypeRevenue, setRoomTypeRevenue] = useState([]);
+  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
+  const [paymentModes, setPaymentModes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState("summary");
   const { mode, toggleMode } = useThemeMode();
+
+  const COLORS = ["#667eea", "#764ba2", "#f093fb", "#4facfe", "#43e97b"];
+  const CHART_COLORS = {
+    primary: "#667eea",
+    secondary: "#764ba2",
+    success: "#10b981",
+    warning: "#f59e0b",
+    info: "#3b82f6",
+  };
 
   useEffect(() => {
     fetchStats();
@@ -56,7 +83,7 @@ const Dashboard = () => {
       const revenueData = await revenueRes.json();
       setStats({
         totalBookings: revenueData.Total_Bookings || 0,
-        totalRevenue: revenueData.Total_Revenue || 0,
+        totalRevenue: parseFloat(revenueData.Total_Revenue) || 0,
         activeBookings: revenueData.Active_Bookings || 0,
         totalCustomers: revenueData.Total_Customers || 0,
       });
@@ -71,7 +98,31 @@ const Dashboard = () => {
         "http://localhost:5000/api/reports/room-type-revenue"
       );
       const revenueByTypeData = await revenueByTypeRes.json();
-      setRoomTypeRevenue(revenueByTypeData);
+      const formattedRevenueData = revenueByTypeData.map((item) => ({
+        ...item,
+        Revenue: parseFloat(item.Revenue) || 0,
+      }));
+      setRoomTypeRevenue(formattedRevenueData);
+
+      const monthlyRevenueRes = await fetch(
+        "http://localhost:5000/api/reports/monthly-revenue"
+      );
+      const monthlyRevenueData = await monthlyRevenueRes.json();
+      const formattedMonthlyData = monthlyRevenueData.map((item) => ({
+        ...item,
+        Revenue: parseFloat(item.Revenue) || 0,
+      }));
+      setMonthlyRevenue(formattedMonthlyData);
+
+      const paymentModesRes = await fetch(
+        "http://localhost:5000/api/reports/payment-modes"
+      );
+      const paymentModesData = await paymentModesRes.json();
+      const formattedPaymentData = paymentModesData.map((item) => ({
+        ...item,
+        Total: parseFloat(item.Total) || 0,
+      }));
+      setPaymentModes(formattedPaymentData);
 
       setLoading(false);
     } catch (err) {
@@ -290,8 +341,8 @@ const Dashboard = () => {
           marginBottom: "32px",
         }}
       >
-        {/* Room Occupancy */}
-        <Paper sx={{ p: 3, height: "100%" }}>
+        {/* Monthly Revenue Trend */}
+        <Paper sx={{ p: 3, height: "400px" }}>
           <div
             style={{
               display: "flex",
@@ -300,68 +351,56 @@ const Dashboard = () => {
               marginBottom: "24px",
             }}
           >
-            <Home size={20} style={{ color: "var(--color-primary)" }} />
+            <TrendingUp size={20} style={{ color: CHART_COLORS.primary }} />
             <Typography variant="h6" sx={{ fontWeight: "medium" }}>
-              Room Status Overview
+              Monthly Revenue Trend
             </Typography>
           </div>
-          <div>
-            {occupancy.map((item, index) => {
-              const colors = ["success", "info", "warning"];
-              const chipColor = colors[index % colors.length];
-              return (
-                <div
-                  key={item.Status}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    paddingTop: "16px",
-                    paddingBottom: "16px",
-                    borderBottom:
-                      index !== occupancy.length - 1
-                        ? "1px solid #e5e7eb"
-                        : "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "16px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        backgroundColor:
-                          chipColor === "success"
-                            ? "#10b981"
-                            : chipColor === "info"
-                            ? "#3b82f6"
-                            : "#f59e0b",
-                      }}
-                    />
-                    <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                      {item.Status}
-                    </Typography>
-                  </div>
-                  <Chip
-                    label={item.Count}
-                    color={chipColor}
-                    size="small"
-                    variant="outlined"
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height="85%">
+            <LineChart data={monthlyRevenue}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="Month"
+                stroke="#6b7280"
+                style={{ fontSize: "12px" }}
+              />
+              <YAxis
+                stroke="#6b7280"
+                style={{ fontSize: "12px" }}
+                tickFormatter={(value) => `₹${value}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: mode === "dark" ? "#1f2937" : "#fff",
+                  border: `1px solid ${
+                    mode === "dark" ? "#374151" : "#e5e7eb"
+                  }`,
+                  borderRadius: "8px",
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                itemStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                labelStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                formatter={(value) => [`₹${value}`, "Revenue"]}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="Revenue"
+                stroke={CHART_COLORS.primary}
+                strokeWidth={3}
+                dot={{ fill: CHART_COLORS.primary, r: 5 }}
+                activeDot={{ r: 7 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </Paper>
 
-        {/* Room Type Revenue */}
-        <Paper sx={{ p: 3, height: "100%" }}>
+        {/* Room Type Revenue Bar Chart */}
+        <Paper sx={{ p: 3, height: "400px" }}>
           <div
             style={{
               display: "flex",
@@ -370,67 +409,172 @@ const Dashboard = () => {
               marginBottom: "24px",
             }}
           >
-            <DollarSign size={20} style={{ color: "var(--color-success)" }} />
+            <BarChart3 size={20} style={{ color: CHART_COLORS.success }} />
             <Typography variant="h6" sx={{ fontWeight: "medium" }}>
               Revenue by Room Type
             </Typography>
           </div>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>
-                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                      Type
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                      Bookings
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                      Revenue
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {roomTypeRevenue.map((item) => (
-                  <TableRow
-                    key={item.Room_Type}
-                    hover
-                    sx={{
-                      "&:last-child td, &:last-child th": { border: 0 },
-                    }}
-                  >
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-                        {item.Room_Type}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={item.Bookings}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: "medium", color: "success.main" }}
-                      >
-                        ₹{item.Revenue?.toFixed(2) || "0.00"}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
+          <ResponsiveContainer width="100%" height="85%">
+            <BarChart data={roomTypeRevenue}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="Room_Type"
+                stroke="#6b7280"
+                style={{ fontSize: "12px" }}
+              />
+              <YAxis
+                stroke="#6b7280"
+                style={{ fontSize: "12px" }}
+                tickFormatter={(value) => `₹${value}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: mode === "dark" ? "#1f2937" : "#fff",
+                  border: `1px solid ${
+                    mode === "dark" ? "#374151" : "#e5e7eb"
+                  }`,
+                  borderRadius: "8px",
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                itemStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                labelStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                formatter={(value) => [`₹${value}`, "Revenue"]}
+              />
+              <Legend />
+              <Bar
+                dataKey="Revenue"
+                fill={CHART_COLORS.success}
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </Paper>
+      </div>
+
+      {/* Additional Charts Row */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))",
+          gap: "24px",
+          marginBottom: "32px",
+        }}
+      >
+        {/* Room Occupancy Pie Chart */}
+        <Paper sx={{ p: 3, height: "400px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <Home size={20} style={{ color: CHART_COLORS.info }} />
+            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+              Room Status Distribution
+            </Typography>
+          </div>
+          <ResponsiveContainer width="100%" height="85%">
+            <PieChart>
+              <Pie
+                data={occupancy}
+                dataKey="Count"
+                nameKey="Status"
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                label={({ Status, Count }) => `${Status}: ${Count}`}
+                labelLine={true}
+              >
+                {occupancy.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: mode === "dark" ? "#1f2937" : "#fff",
+                  border: `1px solid ${
+                    mode === "dark" ? "#374151" : "#e5e7eb"
+                  }`,
+                  borderRadius: "8px",
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                itemStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                labelStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+              />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </Paper>
+
+        {/* Payment Modes Distribution */}
+        <Paper sx={{ p: 3, height: "400px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <CreditCard size={20} style={{ color: CHART_COLORS.warning }} />
+            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+              Payment Methods Distribution
+            </Typography>
+          </div>
+          <ResponsiveContainer width="100%" height="85%">
+            <PieChart>
+              <Pie
+                data={paymentModes}
+                dataKey="Total"
+                nameKey="Payment_Mode"
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                label={({ Payment_Mode, Total }) =>
+                  `${Payment_Mode}: ₹${Total.toFixed(0)}`
+                }
+                labelLine={true}
+              >
+                {paymentModes.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: mode === "dark" ? "#1f2937" : "#fff",
+                  border: `1px solid ${
+                    mode === "dark" ? "#374151" : "#e5e7eb"
+                  }`,
+                  borderRadius: "8px",
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                itemStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                labelStyle={{
+                  color: mode === "dark" ? "#fff" : "#000",
+                }}
+                formatter={(value) => `₹${value.toFixed(2)}`}
+              />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
         </Paper>
       </div>
 
@@ -507,11 +651,14 @@ const Dashboard = () => {
         </Tabs>
 
         {/* Report Content */}
-        <Box elevation={0} sx={{ height: "120%" }}>
+        <Box elevation={0} sx={{ minHeight: "300px" }}>
           {reportType === "summary" && <RevenueSummaryReport stats={stats} />}
           {reportType === "occupancy" && <OccupancyReport data={occupancy} />}
           {reportType === "revenue" && (
-            <RevenueByTypeReport data={roomTypeRevenue} />
+            <RevenueByTypeReport
+              data={roomTypeRevenue}
+              paymentData={paymentModes}
+            />
           )}
         </Box>
       </Box>
@@ -602,37 +749,91 @@ const OccupancyReport = ({ data }) => {
   );
 };
 
-const RevenueByTypeReport = ({ data }) => (
-  <div>
-    {data.map((item, index) => (
-      <div
-        key={item.Room_Type}
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          paddingTop: "16px",
-          paddingBottom: "16px",
-          borderBottom:
-            index !== data.length - 1 ? "1px solid #e5e7eb" : "none",
-        }}
+const RevenueByTypeReport = ({ data, paymentData }) => (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+      gap: "24px",
+    }}
+  >
+    {/* Room Type Revenue Table */}
+    <Paper elevation={2} sx={{ p: 2 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{ fontWeight: "bold", mb: 2, color: "text.secondary" }}
       >
-        <div>
-          <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-            {item.Room_Type}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {item.Bookings} bookings
+        Revenue by Room Type
+      </Typography>
+      {data.map((item, index) => (
+        <div
+          key={item.Room_Type}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: "12px",
+            paddingBottom: "12px",
+            borderBottom:
+              index !== data.length - 1 ? "1px solid #e5e7eb" : "none",
+          }}
+        >
+          <div>
+            <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+              {item.Room_Type}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {item.Bookings} bookings
+            </Typography>
+          </div>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: "medium", color: "success.main" }}
+          >
+            ₹{item.Revenue?.toFixed(2) || "0.00"}
           </Typography>
         </div>
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: "medium", color: "success.main" }}
+      ))}
+    </Paper>
+
+    {/* Payment Modes Table */}
+    <Paper elevation={2} sx={{ p: 2 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{ fontWeight: "bold", mb: 2, color: "text.secondary" }}
+      >
+        Payment Methods Breakdown
+      </Typography>
+      {paymentData.map((item, index) => (
+        <div
+          key={item.Payment_Mode}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: "12px",
+            paddingBottom: "12px",
+            borderBottom:
+              index !== paymentData.length - 1 ? "1px solid #e5e7eb" : "none",
+          }}
         >
-          ₹{item.Revenue?.toFixed(2) || "0.00"}
-        </Typography>
-      </div>
-    ))}
+          <div>
+            <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+              {item.Payment_Mode}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {item.Count} transactions
+            </Typography>
+          </div>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: "medium", color: "primary.main" }}
+          >
+            ₹{item.Total?.toFixed(2) || "0.00"}
+          </Typography>
+        </div>
+      ))}
+    </Paper>
   </div>
 );
 

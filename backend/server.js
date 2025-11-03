@@ -595,4 +595,100 @@ app.delete("/payments/:id", (req, res) => {
   );
 });
 
+// Dashboard Reports Section
+app.get("/api/reports/revenue", (req, res) => {
+  const query = `
+    SELECT 
+      COUNT(DISTINCT b.Booking_ID) as Total_Bookings,
+      COALESCE(SUM(p.Amount_Paid), 0) as Total_Revenue,
+      COUNT(DISTINCT CASE WHEN b.Booking_Status = 'Active' THEN b.Booking_ID END) as Active_Bookings,
+      COUNT(DISTINCT c.Customer_ID) as Total_Customers
+    FROM Booking b
+    LEFT JOIN Customer c ON b.Customer_ID = c.Customer_ID
+    LEFT JOIN Payment p ON b.Booking_ID = p.Booking_ID
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results[0]);
+  });
+});
+
+app.get("/api/reports/occupancy", (req, res) => {
+  const query = `
+    SELECT 
+      Status,
+      COUNT(*) as Count
+    FROM room
+    GROUP BY Status
+    ORDER BY 
+      CASE 
+        WHEN Status = 'Available' THEN 1
+        WHEN Status = 'Booked' THEN 2
+        WHEN Status = 'Under Maintenance' THEN 3
+        ELSE 4
+      END
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
+app.get("/api/reports/room-type-revenue", (req, res) => {
+  const query = `
+    SELECT 
+      r.Room_Type,
+      COUNT(DISTINCT b.Booking_ID) as Bookings,
+      COALESCE(SUM(p.Amount_Paid), 0) as Revenue
+    FROM room r
+    LEFT JOIN Booking b ON r.Room_ID = b.Room_ID
+    LEFT JOIN Payment p ON b.Booking_ID = p.Booking_ID
+    GROUP BY r.Room_Type
+    ORDER BY Revenue DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
+app.get("/api/reports/monthly-revenue", (req, res) => {
+  const query = `
+    SELECT 
+      DATE_FORMAT(p.Payment_Date, '%b') as Month,
+      MONTH(p.Payment_Date) as MonthNum,
+      COALESCE(SUM(p.Amount_Paid), 0) as Revenue,
+      COUNT(DISTINCT p.Payment_ID) as Bookings
+    FROM Payment p
+    WHERE YEAR(p.Payment_Date) = YEAR(CURDATE())
+    GROUP BY MONTH(p.Payment_Date), DATE_FORMAT(p.Payment_Date, '%b')
+    ORDER BY MonthNum ASC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
+app.get("/api/reports/payment-modes", (req, res) => {
+  const query = `
+    SELECT 
+      Payment_Mode,
+      COUNT(*) as Count,
+      COALESCE(SUM(Amount_Paid), 0) as Total
+    FROM Payment
+    GROUP BY Payment_Mode
+    ORDER BY Total DESC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database query failed" });
+    res.json(results);
+  });
+});
+
 app.listen(5000, () => console.log("Server running on http://localhost:5000"));
